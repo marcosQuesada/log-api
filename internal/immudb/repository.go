@@ -63,7 +63,7 @@ func (r *repository) Add(ctx context.Context, line *app.LogLine) error {
 	var sizeValue = make([]byte, 8)
 	binary.BigEndian.PutUint64(sizeValue, size)
 
-	tx, err := r.client.SetAll(ctx, &schema.SetRequest{
+	_, err = r.client.SetAll(ctx, &schema.SetRequest{
 		KVs: []*schema.KeyValue{
 			{Key: line.Key(), Value: line.Value()},
 			{Key: logSizeKeyPlaceHolder, Value: sizeValue},
@@ -85,7 +85,7 @@ func (r *repository) Add(ctx context.Context, line *app.LogLine) error {
 	if err != nil {
 		return fmt.Errorf("unable to LogLine key %s, error %w", line.Key(), err)
 	}
-	spew.Dump(tx)
+
 	return nil
 }
 
@@ -108,6 +108,9 @@ func (r *repository) History(ctx context.Context, key string) (*app.LogLineHisto
 
 	rv := []*app.LogLineRevision{}
 	for _, entry := range h.Entries {
+		if string(entry.Key) == string(logSizeKeyPlaceHolder) {
+			continue
+		}
 		rv = append(rv, &app.LogLineRevision{
 			Value:    entry.Value,
 			Tx:       entry.Tx,
@@ -173,9 +176,13 @@ func (r *repository) GetLastNLogLines(ctx context.Context, n int) ([]*app.LogLin
 	logs := []*app.LogLine{}
 	for _, tx := range txs.GetTxs() {
 		for _, entry := range tx.Entries {
-			item, err := r.client.Get(ctx, entry.Key[1:]) // @TODO: CHECK
+			key := entry.Key[1:]
+			if string(key) == string(logSizeKeyPlaceHolder) {
+				continue
+			}
+			item, err := r.client.Get(ctx, key) // @TODO: CHECK
 			if err != nil {
-				item, err = r.client.Get(ctx, entry.Key[1:])
+				item, err = r.client.Get(ctx, entry.Key[1:]) // @TODO: SAME WEIRD ISSUE; FULL REVIEW
 				if err != nil {
 					log.Fatal(err) // @TODO:
 				}

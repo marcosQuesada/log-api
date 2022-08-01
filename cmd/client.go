@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	v1 "github.com/marcosQuesada/log-api/internal/proto/v1"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -36,27 +36,31 @@ var clientCmd = &cobra.Command{
 
 		defer conn.Close()
 		c := v1.NewLogServiceClient(conn)
+		// @TODO:
+		//ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		//defer cancel()
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-
-		res, err := c.CreateLogLine(ctx, &v1.LogLine{
-			Source:    args[0],
-			Bucket:    args[1],
-			Data:      args[2],
+		ctx := context.Background()
+		res, err := c.CreateLogLine(ctx, &v1.CreateLogLineRequest{
+			Source:    strings.Trim(args[0], " "),
+			Bucket:    strings.Trim(args[1], " "),
+			Value:     strings.Trim(args[2], " "),
 			CreatedAt: timestamppb.New(time.Now()),
 		})
 		if err != nil {
-			log.Fatalf("could not crreate log line: %v", err)
+			log.Fatalf("could not create log line: %v", err)
 		}
 
-		log.Printf("Created Log Line Source %s Bucket %s Data %s Date %s \n", res.Source, res.Bucket, res.Data, res.CreatedAt.AsTime().Format(time.RFC3339Nano))
+		log.Printf("Created Log Line key %s", res.Key)
 
-		r, err := c.GetAllHistory(ctx, &emptypb.Empty{})
+		r, err := c.GetLastNLogLinesHistory(ctx, &v1.LastNLogLinesHistoryRequest{N: 1})
 		if err != nil {
 			log.Fatalf("could not get all history: %v", err)
 		}
-		log.Printf("History: %v", r)
+		for _, i := range r.Histories {
+			log.Printf("History Key %s Revision %v", i.Key, i.Revision)
+
+		}
 
 		//u, err := c.GetLogById(ctx, &v1.LogLineById{Id: 12112})
 		//if err != nil {

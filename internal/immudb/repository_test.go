@@ -2,6 +2,7 @@ package immudb
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"log"
 	"net"
@@ -13,7 +14,6 @@ import (
 	"github.com/codenotary/immudb/pkg/client"
 	"github.com/codenotary/immudb/pkg/server"
 	"github.com/codenotary/immudb/pkg/server/servertest"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/marcosQuesada/log-api/internal/app"
 	"google.golang.org/grpc"
 )
@@ -39,7 +39,6 @@ func TestMain(m *testing.M) {
 }
 
 func TestInitializeRepositoryItCreatesLogLIneSizeKeyEntry(t *testing.T) {
-	//defer reset()
 	r := NewRepository(cl)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -59,22 +58,12 @@ func TestInitializeRepositoryItCreatesLogLIneSizeKeyEntry(t *testing.T) {
 
 func TestItAddTwoLogLineAsNewAndIncrementsTotalLogLinesCounter(t *testing.T) {
 	defer reset()
-	r := NewRepository(cl)
-	key := "foo_0"
-	if err := r.Add(context.Background(), app.NewLogLine(key, "fake value")); err != nil {
-		log.Fatalf("unable to add , error %v", err)
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	if err := r.Initialize(ctx); err != nil {
-		t.Fatalf("unable to initialize repository error %v", err)
-	}
 
-	keyB := "foo_1"
-	if err := r.Add(ctx, app.NewLogLine(keyB, "fake value B")); err != nil {
-		log.Fatalf("unable to add , error %v", err)
-	}
+	r := NewRepository(cl)
+	_ = r.Add(ctx, app.NewLogLine("foo_0", "fake value"))
+	_ = r.Add(ctx, app.NewLogLine("foo_1", "fake value B"))
 
 	v, err := r.Count(ctx)
 	if err != nil {
@@ -86,14 +75,11 @@ func TestItAddTwoLogLineAsNewAndIncrementsTotalLogLinesCounter(t *testing.T) {
 	}
 }
 
-func TestItGetHistoryFromMultipleAddedLogLines(t *testing.T) {
+func TestItGetHistoryFromMultipleUpdatedLogLine(t *testing.T) {
 	defer reset()
 	r := NewRepository(cl)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	if err := r.Initialize(ctx); err != nil {
-		t.Fatalf("unable to initialize repository error %v", err)
-	}
 
 	key := "foo_9"
 	_ = r.Add(ctx, app.NewLogLine(key, "fake value"))
@@ -109,7 +95,6 @@ func TestItGetHistoryFromMultipleAddedLogLines(t *testing.T) {
 	if expected, got := 4, len(h.Revision); expected != got {
 		t.Errorf("unexpected total Revisions")
 	}
-
 }
 
 func TestItAddMultipleTimesSameSingleLogLineAsNewAndIncrementsTotalLogLinesCounterJustOnce(t *testing.T) {
@@ -117,18 +102,10 @@ func TestItAddMultipleTimesSameSingleLogLineAsNewAndIncrementsTotalLogLinesCount
 	r := NewRepository(cl)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	if err := r.Initialize(ctx); err != nil {
-		t.Fatalf("unable to initialize repository error %v", err)
-	}
 
 	key := "foo_0"
-	if err := r.Add(context.Background(), app.NewLogLine(key, "fake value")); err != nil {
-		log.Fatalf("unable to add , error %v", err)
-	}
-
-	if err := r.Add(ctx, app.NewLogLine(key, "fake value B")); err != nil {
-		log.Fatalf("unable to add , error %v", err)
-	}
+	_ = r.Add(context.Background(), app.NewLogLine(key, "fake value"))
+	_ = r.Add(ctx, app.NewLogLine(key, "fake value B"))
 
 	v, err := r.Count(ctx)
 	if err != nil {
@@ -145,9 +122,7 @@ func TestItGetsByIDPreviousInsertedLogLine(t *testing.T) {
 	r := NewRepository(cl)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	if err := r.Initialize(ctx); err != nil {
-		t.Fatalf("unable to initialize repository error %v", err)
-	}
+
 	key := "foo_0"
 	value := "fake value"
 	_ = r.Add(context.Background(), app.NewLogLine(key, value))
@@ -167,9 +142,7 @@ func TestItGetsByPrefixPreviousInsertedLogLines(t *testing.T) {
 	r := NewRepository(cl)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	if err := r.Initialize(ctx); err != nil {
-		t.Fatalf("unable to initialize repository error %v", err)
-	}
+
 	key := "foo_0"
 	_ = r.Add(context.Background(), app.NewLogLine(key, "fake value"))
 	keyB := "foo_1"
@@ -184,6 +157,8 @@ func TestItGetsByPrefixPreviousInsertedLogLines(t *testing.T) {
 	if expected, got := 2, len(all); expected != got {
 		t.Fatalf("expectation does not match, expected %d got %d", expected, got)
 	}
+
+	// @TODO: Fulfill order reflect.Equals
 }
 
 func TestItGetsLastNInsertedLogLines(t *testing.T) {
@@ -192,9 +167,6 @@ func TestItGetsLastNInsertedLogLines(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	if err := r.Initialize(ctx); err != nil {
-		t.Fatalf("unable to initialize repository error %v", err)
-	}
 	key := "foo_0"
 	_ = r.Add(context.Background(), app.NewLogLine(key, "fake value"))
 	keyB := "foo_1"
@@ -211,22 +183,23 @@ func TestItGetsLastNInsertedLogLines(t *testing.T) {
 	if expected, got := size, len(all); expected != got {
 		t.Fatalf("expectation does not match, expected %d got %d", expected, got)
 	}
+
+	// @TODO: Fulfill order reflect.Equals
 }
 
 func setup() {
 	log.Println("SETUP")
 	options = server.DefaultOptions()
 	bs := servertest.NewBufconnServer(options)
-
 	_ = bs.Start()
+	immudbServer = bs
 
 	var err error
 	listener, err = net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
 	if err != nil {
-		log.Fatalln("Failed to listen:", err)
+		log.Fatalf("Failed to listen on port %d, error %v", grpcPort, err)
 	}
 	go bs.GrpcServer.Serve(listener)
-	immudbServer = bs
 
 	opts := client.DefaultOptions().WithDialOptions(
 		[]grpc.DialOption{grpc.WithContextDialer(bs.Dialer), grpc.WithInsecure()},
@@ -253,7 +226,6 @@ func setup() {
 }
 
 func reset() {
-	log.Println("RESET")
 	r := NewRepository(cl)
 	all, err := r.GetByPrefix(context.Background(), "")
 	if err != nil {
@@ -262,32 +234,26 @@ func reset() {
 
 	keys := [][]byte{}
 	for _, line := range all {
-		if string(line.Key()) == string(logSizeKeyPlaceHolder) {
-			continue
-		}
 		keys = append(keys, line.Key())
 	}
-	if len(keys) == 0 {
-		return
-	}
 
-	tx, _ := cl.Delete(context.Background(), &schema.DeleteKeysRequest{
+	// Soft delete all keys
+	_, _ = cl.Delete(context.Background(), &schema.DeleteKeysRequest{
 		Keys:    keys,
 		SinceTx: 0,
 		NoWait:  false,
 	})
 
-	spew.Dump(tx)
+	// Reset log line counter
+	var sizeValue = make([]byte, 8)
+	binary.BigEndian.PutUint64(sizeValue, 0)
+	_, _ = cl.Set(context.Background(), logSizeKeyPlaceHolder, sizeValue)
 }
 
 func shutdown() {
-	log.Println("EXIT")
-
 	_ = listener.Close()
 	_ = immudbServer.Stop()
 
 	_ = os.RemoveAll(options.Dir)
 	_ = os.Remove(".state-")
-
-	// @TODO: RESET STATE!
 }

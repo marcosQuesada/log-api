@@ -27,3 +27,4 @@ It is not required to develop a full blown solution, but we should be able to se
 
 ## Improvements
 - next steps....
+  - Precondition fail on concurrent writers needs a retry loop

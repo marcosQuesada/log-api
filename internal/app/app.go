@@ -2,53 +2,26 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	v1 "github.com/marcosQuesada/log-api/internal/proto/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
-
-type LogLine struct {
-	key   string
-	value string
-	tag   string
-	time  time.Time
-}
-
-func NewLogLine(tag, key, value string, t time.Time) *LogLine {
-	return &LogLine{
-		key:   key,
-		value: value,
-		tag:   tag,
-		time:  t,
-	}
-}
-
-func (l *LogLine) Key() []byte {
-	return []byte(l.key)
-}
-
-func (l *LogLine) Value() []byte {
-	return []byte(l.value)
-}
-
-func (l *LogLine) Tag() []byte {
-	return []byte(l.tag)
-}
-
-func (l *LogLine) Time() time.Time {
-	return l.time // @TODO: Format t0 string and use them as key
-}
 
 type Repository interface {
 	Add(ctx context.Context, line *LogLine) error
 	AddBatch(ctx context.Context, lines []*LogLine) error
-	History(ctx context.Context, key string) error
+	History(ctx context.Context, key string) (*LogLineHistory, error)
 	Count(ctx context.Context) (uint64, error)
+
+	GetByKey(ctx context.Context, key string) (*LogLine, error)
+	GetByPrefix(ctx context.Context, prefix string) ([]*LogLine, error)
+	GetLastNLogLines(ctx context.Context, n int) ([]*LogLine, error)
 }
 
 type LogService struct { // @TODO: Rethink project structure! THis will become an empty layer
@@ -62,107 +35,149 @@ func NewLogService(r Repository) *LogService {
 	}
 }
 
-func (l *LogService) CreateLogLine(ctx context.Context, line *v1.LogLine) (*v1.LogLine, error) {
-	log.Printf("Create Log Line %v", line)
+func (l *LogService) CreateLogLine(ctx context.Context, r *v1.CreateLogLineRequest) (*v1.CreateLogLineResponse, error) {
+	log.Printf("Create Log Line %v", r)
 
-	if err := l.repository.Add(ctx, convert(line)); err != nil {
+	line := convertLogLineRequest(r)
+	if err := l.repository.Add(ctx, line); err != nil {
 		return nil, status.Error(codes.Internal, "Cannot add LoginLine on repository!")
 	}
 
-	return &v1.LogLine{
-		Source:    line.Source,
-		Bucket:    line.Bucket,
-		Data:      line.Data,
-		CreatedAt: line.CreatedAt,
+	return &v1.CreateLogLineResponse{
+		Key: line.key,
 	}, nil
 }
 
-func (l *LogService) CreateBatchLogLine(ctx context.Context, lines *v1.LogLines) (*v1.LogLines, error) {
+func (l *LogService) BatchCreateLogLines(ctx context.Context, lines *v1.BatchCreateLogLinesRequest) (*v1.BatchCreateLogLinesResponse, error) {
 	log.Printf("CreateBatchLogLine Log Lines %v", lines)
 
 	logs := []*LogLine{}
-	for _, line := range lines.LogLines {
-		logs = append(logs, convert(line))
+	ids := []string{}
+	for _, r := range lines.Lines {
+		line := convertLogLineRequest(r)
+		logs = append(logs, line)
+		ids = append(ids, line.key)
 	}
 
 	if err := l.repository.AddBatch(ctx, logs); err != nil {
-		return nil, status.Error(codes.Internal, "Cannot add LoginLine on repository!")
+		return nil, status.Error(codes.Internal, "Cannot process BatchCreateLogLines on repository!")
 	}
 
-	// @TODO: SOlve response
-	return &v1.LogLines{
-		LogLines: []*v1.LogLine{
-			{
-				Source:    "foo.log",
-				Bucket:    "FakeBucket",
-				Data:      "FakeData",
-				CreatedAt: timestamppb.New(time.Now()),
-			},
-			{
-				Source:    "foo.log",
-				Bucket:    "FakeBucket1",
-				Data:      "FakeData1",
-				CreatedAt: timestamppb.New(time.Now()),
-			},
-		},
+	return &v1.BatchCreateLogLinesResponse{
+		Key: ids,
 	}, nil
 }
 
-// @TODO: Replace proper types
-func (l *LogService) GetAllHistory(ctx context.Context, e *emptypb.Empty) (*v1.LogLines, error) {
+func (l *LogService) GetAllLogLinesHistory(ctx context.Context, e *emptypb.Empty) (*v1.LogLineHistories, error) {
 	log.Printf("GetAllHistory Log Lines %v", e)
 
-	// @TODO: GET ALL Log Lines, get History from them
-	//if err := l.repository.History(ctx, key); err != nil {
-	//	return nil, status.Error(codes.Internal, "Cannot add LoginLine on repository!")
-	//}
+	all, err := l.repository.GetByPrefix(ctx, "")
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Cannot process GetByPrefix on repository!")
+	}
 
-	return &v1.LogLines{
-		LogLines: []*v1.LogLine{
-			{
-				Source:    "foo.log",
-				Bucket:    "FakeBucket",
-				Data:      "FakeData",
-				CreatedAt: timestamppb.New(time.Now()),
-			},
-			{
-				Source:    "foo.log",
-				Bucket:    "FakeBucket1",
-				Data:      "FakeData1",
-				CreatedAt: timestamppb.New(time.Now()),
-			},
-		},
-	}, nil
+	return l.histories(ctx, all)
 }
 
-func (l *LogService) GetLogCount(ctx context.Context, lines *v1.LogLines) (*v1.Count, error) {
-	log.Printf("GetLogCount Log Lines %v", lines)
+func (l *LogService) GetLastNLogLinesHistory(ctx context.Context, e *v1.LastNLogLinesHistoryRequest) (*v1.LogLineHistories, error) {
+	log.Printf("GetAllHistory Log Lines %v", e)
+
+	all, err := l.repository.GetLastNLogLines(ctx, int(e.GetN()))
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Cannot process GetByPrefix on repository!")
+	}
+
+	return l.histories(ctx, all)
+}
+
+func (l *LogService) GetLogCount(ctx context.Context, e *emptypb.Empty) (*v1.Count, error) {
+	log.Println("GetLogCount Log Lines")
 	total, err := l.repository.Count(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Cannot count total LoginLine on repository!")
 	}
 	return &v1.Count{
-		Total: uint32(total), // @TODO: Solve it!
+		Total: total,
 	}, nil
 }
 
-func (l *LogService) GetLogById(ctx context.Context, line *v1.LogLineById) (*v1.LogLine, error) {
+func (l *LogService) GetLogLineByKey(ctx context.Context, line *v1.LogLineByKeyRequest) (*v1.LogLine, error) {
 	log.Printf("GetLogById Log Line %v", line)
 
-	//l, err := l.repository.Grt(ctx, line.Key)
-	return &v1.LogLine{
-		Source:    "foo.log",
-		Bucket:    "FakeBucket-XXX",
-		Data:      "FakeData-XXX",
-		CreatedAt: timestamppb.New(time.Now()),
+	ll, err := l.repository.GetByKey(ctx, line.Key)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Cannot get by Key on repository!")
+	}
+	return convertLogLinesToProtocol(ll), nil
+}
+
+func (l *LogService) GetLogLinesByPrefix(ctx context.Context, line *v1.LogLineByPrefixRequest) (*v1.LogLines, error) {
+	log.Printf("GetLogById Log Line %v", line)
+
+	ll, err := l.repository.GetByPrefix(ctx, line.Prefix)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Cannot get by Prefix on repository!")
+	}
+
+	lines := []*v1.LogLine{}
+	for _, logLine := range ll {
+		lines = append(lines, convertLogLinesToProtocol(logLine))
+	}
+	return &v1.LogLines{LogLines: lines}, nil
+}
+
+func (l *LogService) histories(ctx context.Context, all []*LogLine) (*v1.LogLineHistories, error) {
+	log.Printf("histories Log Lines %v \n", all)
+
+	lh := []*v1.LogLineHistory{}
+	for _, line := range all {
+		//h, err := l.repository.History(ctx, string(line.Key()[1:])) // @TODO: WHY??
+		h, err := l.repository.History(ctx, string(line.Key())) // @TODO: WHY??
+		if err != nil {
+			h, err = l.repository.History(ctx, string(line.Key()[1:]))
+			if err != nil {
+				fmt.Printf("XXXX  key %s  error %v \n", line.Key(), err) // @TODO: Log errors
+				spew.Dump(line.Key())
+				return nil, status.Error(codes.Internal, "Cannot get History on repository!")
+			}
+		}
+
+		r := []*v1.LogLineRevision{}
+		for _, i := range h.Revision {
+			r = append(r, &v1.LogLineRevision{
+				Tx:       int64(i.Tx),
+				Value:    string(i.Value),
+				Revision: int64(i.Revision),
+			})
+		}
+		lh = append(lh, &v1.LogLineHistory{
+			Key:      string(line.Key()),
+			Revision: r,
+		})
+	}
+
+	return &v1.LogLineHistories{
+		Histories: lh,
 	}, nil
 }
 
-func convert(l *v1.LogLine) *LogLine {
-	return &LogLine{ // @TODO: Resolve key composition!
-		key:   l.Source,
-		tag:   l.Bucket,
-		value: l.Data,
-		time:  l.CreatedAt.AsTime(),
+func convertLogLineRequest(l *v1.CreateLogLineRequest) *LogLine {
+	return &LogLine{
+		key:   logLineKey(l.GetBucket(), l.GetSource(), l.CreatedAt.AsTime()),
+		value: l.Value,
 	}
+}
+
+func convertLogLinesToProtocol(l *LogLine) *v1.LogLine {
+	return &v1.LogLine{
+		Key:   l.key,
+		Value: l.value,
+		//CreatedAt: // @TODO: Pending
+	}
+}
+
+// @TODO: Include bucket!
+func logLineKey(bucket, source string, t time.Time) string {
+	//return fmt.Sprintf("%s-%s", source, t.Format(time.RFC3339Nano))
+	return fmt.Sprintf("%s_%d", source, t.UnixNano())
 }
