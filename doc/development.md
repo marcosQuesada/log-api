@@ -8,3 +8,7 @@ proto definitions, compile and autogenerate:
     internal/proto/v1/log.proto
 
 ```
+Http Gateway
+```
+protoc -I . --grpc-gateway_out=logtostderr=true:. internal/proto/v1/log.proto
+```

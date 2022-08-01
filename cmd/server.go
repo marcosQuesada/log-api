@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"time"
 
 	"github.com/codenotary/immudb/pkg/api/schema"
 	"github.com/codenotary/immudb/pkg/client"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/marcosQuesada/log-api/internal/app"
 	"github.com/marcosQuesada/log-api/internal/immudb"
 	v1 "github.com/marcosQuesada/log-api/internal/proto/v1"
@@ -16,11 +18,15 @@ import (
 	"google.golang.org/grpc"
 )
 
+const maxReceivedMessageSize = 1024 * 1024 * 20
+
 var (
-	grpcPort       int = 9000
-	immudbUserName     = "immudb"
-	immudbPassword     = "immudb"
-	immudbDatabase     = "defaultdb"
+	grpcPort int = 9000
+	httpPort int = 9090
+
+	immudbUserName = "immudb"
+	immudbPassword = "immudb"
+	immudbDatabase = "defaultdb"
 )
 
 // serverCmd represents the server command
@@ -49,7 +55,35 @@ var serverCmd = &cobra.Command{
 		v1.RegisterLogServiceServer(s, svc)
 
 		// @TODO: Signal chan, add ordered shutdown
-		log.Fatalln(s.Serve(lis))
+		go func() {
+			log.Fatalln(s.Serve(lis))
+		}()
+
+		// Create a client connection to the gRPC server bind to gRPC-Gateway proxy
+		conn, err := grpc.DialContext(
+			context.Background(),
+			fmt.Sprintf("%s:%d", "localhost", grpcPort),
+			grpc.WithBlock(),
+			grpc.WithInsecure(),
+			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxReceivedMessageSize), grpc.MaxCallSendMsgSize(maxReceivedMessageSize)),
+		)
+		if err != nil {
+			log.Fatalln("Failed to dial server:", err)
+		}
+
+		mux := runtime.NewServeMux()
+		err = v1.RegisterLogServiceHandler(context.Background(), mux, conn)
+		if err != nil {
+			log.Fatalln("Failed to register http grpc gateway:", err)
+		}
+
+		gwServer := &http.Server{
+			Addr:    fmt.Sprintf(":%d", httpPort),
+			Handler: mux,
+		}
+
+		log.Printf("Serving gRPC-Gateway on %s:%d \n", "localhost", httpPort)
+		log.Fatalln(gwServer.ListenAndServe())
 	},
 }
 
