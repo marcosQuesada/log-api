@@ -19,11 +19,13 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type LogServiceClient interface {
-	CreateLogLine(ctx context.Context, in *LogLine, opts ...grpc.CallOption) (*LogLine, error)
-	CreateBatchLogLine(ctx context.Context, in *LogLines, opts ...grpc.CallOption) (*LogLines, error)
-	GetAllHistory(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*LogLines, error)
-	GetLogCount(ctx context.Context, in *LogLines, opts ...grpc.CallOption) (*Count, error)
-	GetLogById(ctx context.Context, in *LogLineById, opts ...grpc.CallOption) (*LogLine, error)
+	CreateLogLine(ctx context.Context, in *CreateLogLineRequest, opts ...grpc.CallOption) (*CreateLogLineResponse, error)
+	BatchCreateLogLines(ctx context.Context, in *BatchCreateLogLinesRequest, opts ...grpc.CallOption) (*BatchCreateLogLinesResponse, error)
+	GetAllLogLinesHistory(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*LogLineHistories, error)
+	GetLastNLogLinesHistory(ctx context.Context, in *LastNLogLinesHistoryRequest, opts ...grpc.CallOption) (*LogLineHistories, error)
+	GetLogCount(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Count, error)
+	GetLogLineByKey(ctx context.Context, in *LogLineByKeyRequest, opts ...grpc.CallOption) (*LogLine, error)
+	GetLogLinesByPrefix(ctx context.Context, in *LogLineByPrefixRequest, opts ...grpc.CallOption) (*LogLines, error)
 }
 
 type logServiceClient struct {
@@ -34,8 +36,8 @@ func NewLogServiceClient(cc grpc.ClientConnInterface) LogServiceClient {
 	return &logServiceClient{cc}
 }
 
-func (c *logServiceClient) CreateLogLine(ctx context.Context, in *LogLine, opts ...grpc.CallOption) (*LogLine, error) {
-	out := new(LogLine)
+func (c *logServiceClient) CreateLogLine(ctx context.Context, in *CreateLogLineRequest, opts ...grpc.CallOption) (*CreateLogLineResponse, error) {
+	out := new(CreateLogLineResponse)
 	err := c.cc.Invoke(ctx, "/v1.LogService/CreateLogLine", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -43,25 +45,34 @@ func (c *logServiceClient) CreateLogLine(ctx context.Context, in *LogLine, opts 
 	return out, nil
 }
 
-func (c *logServiceClient) CreateBatchLogLine(ctx context.Context, in *LogLines, opts ...grpc.CallOption) (*LogLines, error) {
-	out := new(LogLines)
-	err := c.cc.Invoke(ctx, "/v1.LogService/CreateBatchLogLine", in, out, opts...)
+func (c *logServiceClient) BatchCreateLogLines(ctx context.Context, in *BatchCreateLogLinesRequest, opts ...grpc.CallOption) (*BatchCreateLogLinesResponse, error) {
+	out := new(BatchCreateLogLinesResponse)
+	err := c.cc.Invoke(ctx, "/v1.LogService/BatchCreateLogLines", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *logServiceClient) GetAllHistory(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*LogLines, error) {
-	out := new(LogLines)
-	err := c.cc.Invoke(ctx, "/v1.LogService/GetAllHistory", in, out, opts...)
+func (c *logServiceClient) GetAllLogLinesHistory(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*LogLineHistories, error) {
+	out := new(LogLineHistories)
+	err := c.cc.Invoke(ctx, "/v1.LogService/GetAllLogLinesHistory", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *logServiceClient) GetLogCount(ctx context.Context, in *LogLines, opts ...grpc.CallOption) (*Count, error) {
+func (c *logServiceClient) GetLastNLogLinesHistory(ctx context.Context, in *LastNLogLinesHistoryRequest, opts ...grpc.CallOption) (*LogLineHistories, error) {
+	out := new(LogLineHistories)
+	err := c.cc.Invoke(ctx, "/v1.LogService/GetLastNLogLinesHistory", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *logServiceClient) GetLogCount(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Count, error) {
 	out := new(Count)
 	err := c.cc.Invoke(ctx, "/v1.LogService/GetLogCount", in, out, opts...)
 	if err != nil {
@@ -70,9 +81,18 @@ func (c *logServiceClient) GetLogCount(ctx context.Context, in *LogLines, opts .
 	return out, nil
 }
 
-func (c *logServiceClient) GetLogById(ctx context.Context, in *LogLineById, opts ...grpc.CallOption) (*LogLine, error) {
+func (c *logServiceClient) GetLogLineByKey(ctx context.Context, in *LogLineByKeyRequest, opts ...grpc.CallOption) (*LogLine, error) {
 	out := new(LogLine)
-	err := c.cc.Invoke(ctx, "/v1.LogService/GetLogById", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/v1.LogService/GetLogLineByKey", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *logServiceClient) GetLogLinesByPrefix(ctx context.Context, in *LogLineByPrefixRequest, opts ...grpc.CallOption) (*LogLines, error) {
+	out := new(LogLines)
+	err := c.cc.Invoke(ctx, "/v1.LogService/GetLogLinesByPrefix", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -83,11 +103,13 @@ func (c *logServiceClient) GetLogById(ctx context.Context, in *LogLineById, opts
 // All implementations must embed UnimplementedLogServiceServer
 // for forward compatibility
 type LogServiceServer interface {
-	CreateLogLine(context.Context, *LogLine) (*LogLine, error)
-	CreateBatchLogLine(context.Context, *LogLines) (*LogLines, error)
-	GetAllHistory(context.Context, *emptypb.Empty) (*LogLines, error)
-	GetLogCount(context.Context, *LogLines) (*Count, error)
-	GetLogById(context.Context, *LogLineById) (*LogLine, error)
+	CreateLogLine(context.Context, *CreateLogLineRequest) (*CreateLogLineResponse, error)
+	BatchCreateLogLines(context.Context, *BatchCreateLogLinesRequest) (*BatchCreateLogLinesResponse, error)
+	GetAllLogLinesHistory(context.Context, *emptypb.Empty) (*LogLineHistories, error)
+	GetLastNLogLinesHistory(context.Context, *LastNLogLinesHistoryRequest) (*LogLineHistories, error)
+	GetLogCount(context.Context, *emptypb.Empty) (*Count, error)
+	GetLogLineByKey(context.Context, *LogLineByKeyRequest) (*LogLine, error)
+	GetLogLinesByPrefix(context.Context, *LogLineByPrefixRequest) (*LogLines, error)
 	mustEmbedUnimplementedLogServiceServer()
 }
 
@@ -95,20 +117,26 @@ type LogServiceServer interface {
 type UnimplementedLogServiceServer struct {
 }
 
-func (UnimplementedLogServiceServer) CreateLogLine(context.Context, *LogLine) (*LogLine, error) {
+func (UnimplementedLogServiceServer) CreateLogLine(context.Context, *CreateLogLineRequest) (*CreateLogLineResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateLogLine not implemented")
 }
-func (UnimplementedLogServiceServer) CreateBatchLogLine(context.Context, *LogLines) (*LogLines, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateBatchLogLine not implemented")
+func (UnimplementedLogServiceServer) BatchCreateLogLines(context.Context, *BatchCreateLogLinesRequest) (*BatchCreateLogLinesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BatchCreateLogLines not implemented")
 }
-func (UnimplementedLogServiceServer) GetAllHistory(context.Context, *emptypb.Empty) (*LogLines, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetAllHistory not implemented")
+func (UnimplementedLogServiceServer) GetAllLogLinesHistory(context.Context, *emptypb.Empty) (*LogLineHistories, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAllLogLinesHistory not implemented")
 }
-func (UnimplementedLogServiceServer) GetLogCount(context.Context, *LogLines) (*Count, error) {
+func (UnimplementedLogServiceServer) GetLastNLogLinesHistory(context.Context, *LastNLogLinesHistoryRequest) (*LogLineHistories, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetLastNLogLinesHistory not implemented")
+}
+func (UnimplementedLogServiceServer) GetLogCount(context.Context, *emptypb.Empty) (*Count, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLogCount not implemented")
 }
-func (UnimplementedLogServiceServer) GetLogById(context.Context, *LogLineById) (*LogLine, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetLogById not implemented")
+func (UnimplementedLogServiceServer) GetLogLineByKey(context.Context, *LogLineByKeyRequest) (*LogLine, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetLogLineByKey not implemented")
+}
+func (UnimplementedLogServiceServer) GetLogLinesByPrefix(context.Context, *LogLineByPrefixRequest) (*LogLines, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetLogLinesByPrefix not implemented")
 }
 func (UnimplementedLogServiceServer) mustEmbedUnimplementedLogServiceServer() {}
 
@@ -124,7 +152,7 @@ func RegisterLogServiceServer(s grpc.ServiceRegistrar, srv LogServiceServer) {
 }
 
 func _LogService_CreateLogLine_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LogLine)
+	in := new(CreateLogLineRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -136,49 +164,67 @@ func _LogService_CreateLogLine_Handler(srv interface{}, ctx context.Context, dec
 		FullMethod: "/v1.LogService/CreateLogLine",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LogServiceServer).CreateLogLine(ctx, req.(*LogLine))
+		return srv.(LogServiceServer).CreateLogLine(ctx, req.(*CreateLogLineRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LogService_CreateBatchLogLine_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LogLines)
+func _LogService_BatchCreateLogLines_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BatchCreateLogLinesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LogServiceServer).CreateBatchLogLine(ctx, in)
+		return srv.(LogServiceServer).BatchCreateLogLines(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/v1.LogService/CreateBatchLogLine",
+		FullMethod: "/v1.LogService/BatchCreateLogLines",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LogServiceServer).CreateBatchLogLine(ctx, req.(*LogLines))
+		return srv.(LogServiceServer).BatchCreateLogLines(ctx, req.(*BatchCreateLogLinesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LogService_GetAllHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _LogService_GetAllLogLinesHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LogServiceServer).GetAllHistory(ctx, in)
+		return srv.(LogServiceServer).GetAllLogLinesHistory(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/v1.LogService/GetAllHistory",
+		FullMethod: "/v1.LogService/GetAllLogLinesHistory",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LogServiceServer).GetAllHistory(ctx, req.(*emptypb.Empty))
+		return srv.(LogServiceServer).GetAllLogLinesHistory(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LogService_GetLastNLogLinesHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LastNLogLinesHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LogServiceServer).GetLastNLogLinesHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/v1.LogService/GetLastNLogLinesHistory",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LogServiceServer).GetLastNLogLinesHistory(ctx, req.(*LastNLogLinesHistoryRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _LogService_GetLogCount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LogLines)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -190,25 +236,43 @@ func _LogService_GetLogCount_Handler(srv interface{}, ctx context.Context, dec f
 		FullMethod: "/v1.LogService/GetLogCount",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LogServiceServer).GetLogCount(ctx, req.(*LogLines))
+		return srv.(LogServiceServer).GetLogCount(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LogService_GetLogById_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LogLineById)
+func _LogService_GetLogLineByKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LogLineByKeyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LogServiceServer).GetLogById(ctx, in)
+		return srv.(LogServiceServer).GetLogLineByKey(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/v1.LogService/GetLogById",
+		FullMethod: "/v1.LogService/GetLogLineByKey",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LogServiceServer).GetLogById(ctx, req.(*LogLineById))
+		return srv.(LogServiceServer).GetLogLineByKey(ctx, req.(*LogLineByKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LogService_GetLogLinesByPrefix_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LogLineByPrefixRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LogServiceServer).GetLogLinesByPrefix(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/v1.LogService/GetLogLinesByPrefix",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LogServiceServer).GetLogLinesByPrefix(ctx, req.(*LogLineByPrefixRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -225,20 +289,28 @@ var LogService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _LogService_CreateLogLine_Handler,
 		},
 		{
-			MethodName: "CreateBatchLogLine",
-			Handler:    _LogService_CreateBatchLogLine_Handler,
+			MethodName: "BatchCreateLogLines",
+			Handler:    _LogService_BatchCreateLogLines_Handler,
 		},
 		{
-			MethodName: "GetAllHistory",
-			Handler:    _LogService_GetAllHistory_Handler,
+			MethodName: "GetAllLogLinesHistory",
+			Handler:    _LogService_GetAllLogLinesHistory_Handler,
+		},
+		{
+			MethodName: "GetLastNLogLinesHistory",
+			Handler:    _LogService_GetLastNLogLinesHistory_Handler,
 		},
 		{
 			MethodName: "GetLogCount",
 			Handler:    _LogService_GetLogCount_Handler,
 		},
 		{
-			MethodName: "GetLogById",
-			Handler:    _LogService_GetLogById_Handler,
+			MethodName: "GetLogLineByKey",
+			Handler:    _LogService_GetLogLineByKey_Handler,
+		},
+		{
+			MethodName: "GetLogLinesByPrefix",
+			Handler:    _LogService_GetLogLinesByPrefix_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

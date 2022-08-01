@@ -9,50 +9,104 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 
 service LogService {
-  rpc CreateLogLine (LogLine) returns (LogLine) { // @TODO: LogLine return ¿?
+  rpc CreateLogLine (CreateLogLineRequest) returns (CreateLogLineResponse) { // @TODO: LogLine return ¿?
     option (google.api.http) = {
       post: "/api/v1/log"
       body: "*"
     };
   }
-  rpc CreateBatchLogLine (LogLines) returns (LogLines) {
+  rpc BatchCreateLogLines (BatchCreateLogLinesRequest) returns (BatchCreateLogLinesResponse) {
     option (google.api.http) = {
       post: "/api/v1/logs"
       body: "*"
     };
   }
-  rpc GetAllHistory (google.protobuf.Empty) returns (LogLines) {
+  rpc GetAllLogLinesHistory (google.protobuf.Empty) returns (LogLineHistories) {
     option (google.api.http) = {
-      get: "/api/v1/log/history"
+      get: "/api/v1/log/history/all"
     };
   }
-  rpc GetLogCount (LogLines) returns (Count) {
+  rpc GetLastNLogLinesHistory (LastNLogLinesHistoryRequest) returns (LogLineHistories) {
+    option (google.api.http) = {
+      get: "/api/v1/log/history/last/{n}"
+    };
+  }
+
+  rpc GetLogCount (google.protobuf.Empty) returns (Count) {
     option (google.api.http) = {
       get: "/api/v1/logs/count"
     };
   }
-  rpc GetLogById (LogLineById) returns (LogLine) {
+
+  rpc GetLogLineByKey (LogLineByKeyRequest) returns (LogLine) {
     option (google.api.http) = {
       get: "/api/v1/log/key/{key}"
     };
   }
+
+  rpc GetLogLinesByPrefix (LogLineByPrefixRequest) returns (LogLines) {
+    option (google.api.http) = {
+      get: "/api/v1/log/prefix/{prefix}"
+    };
+  }
+}
+
+message CreateLogLineRequest {
+  string source = 1;
+  string bucket = 2;
+  string value = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+message CreateLogLineResponse {
+  string key = 1;
+}
+
+message BatchCreateLogLinesRequest {
+  repeated CreateLogLineRequest lines = 1;
+}
+
+message BatchCreateLogLinesResponse {
+  repeated string key = 1;
+}
+
+message LastNLogLinesHistoryRequest {
+  int64 n = 1;
+}
+
+message LogLineHistory {
+  string key = 1;
+  repeated LogLineRevision revision = 2;
+}
+
+message LogLineRevision {
+  int64 tx = 1;
+  string value = 2;
+  int64 revision = 3;
+}
+
+message LogLineHistories {
+  repeated LogLineHistory histories = 1;
+}
+
+message Count {
+  uint64 total = 1;
+}
+
+message LogLineByKeyRequest {
+  string key = 1;
+}
+
+message LogLineByPrefixRequest {
+  string prefix = 1;
 }
 
 message LogLine {
-  string source = 1;
-  string bucket = 2;
-  string data = 3;
+  string key = 1;
+  string value = 2;
   google.protobuf.Timestamp created_at = 4;
 }
 
 message LogLines {
   repeated LogLine log_lines = 1;
-}
-
-message Count {
-  uint32 total = 1;
-}
-
-message LogLineById {
-  string key = 1;
 }
