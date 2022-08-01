@@ -14,7 +14,9 @@ import (
 	"github.com/marcosQuesada/log-api/internal/app"
 )
 
-var logSizeKey = []byte("log_size")
+var logSizeKeyPlaceHolder = []byte("log_size")
+
+var errCounterNotInitialized = errors.New("log line size counter not initialized")
 
 type repository struct {
 	client client.ImmuClient
@@ -24,6 +26,7 @@ func NewRepository(c client.ImmuClient) *repository {
 	return &repository{client: c}
 }
 
+// Initialize ensures total number of log lines Key initialization
 func (r *repository) Initialize(ctx context.Context) error {
 	_, err := r.Count(ctx)
 	if err == nil {
@@ -35,24 +38,17 @@ func (r *repository) Initialize(ctx context.Context) error {
 
 	var id = make([]byte, 8)
 	binary.BigEndian.PutUint64(id, 0)
-	if _, err := r.client.Set(context.Background(), logSizeKey, id); err != nil {
-		return fmt.Errorf("unable to initialize log lines size key %s error %w", logSizeKey, err)
+	if _, err := r.client.Set(context.Background(), logSizeKeyPlaceHolder, id); err != nil {
+		return fmt.Errorf("unable to initialize log lines size key %s error %w", logSizeKeyPlaceHolder, err)
 	}
 
 	return nil
 }
 
-//func (r *repository) SetLogLine(ctx context.Context, line *app.LogLine) error { // @TODO Provisional
-//	tx, err := r.client.Set(ctx, line.Key(), line.Value())
-//	if err != nil {
-//		return fmt.Errorf("unable to Set key %s, error %w", line.Key(), err)
-//	}
-//	spew.Dump(tx)
-//	return nil
-//}
-
+// Add LogLine to repository, if it's a new line it will increment total Log Lines inside the transaction.
+// if key already exists it just updates its value
 func (r *repository) Add(ctx context.Context, line *app.LogLine) error {
-	keySize, err := r.client.Get(context.Background(), logSizeKey)
+	keySize, err := r.client.Get(context.Background(), logSizeKeyPlaceHolder)
 	if err != nil {
 		return fmt.Errorf("unable to get log line index %w", err)
 	}
@@ -69,11 +65,11 @@ func (r *repository) Add(ctx context.Context, line *app.LogLine) error {
 	tx, err := r.client.SetAll(ctx, &schema.SetRequest{
 		KVs: []*schema.KeyValue{
 			{Key: line.Key(), Value: line.Value()},
-			{Key: logSizeKey, Value: sizeValue},
+			{Key: logSizeKeyPlaceHolder, Value: sizeValue},
 		},
 		Preconditions: []*schema.Precondition{
 			schema.PreconditionKeyMustNotExist(line.Key()),
-			schema.PreconditionKeyNotModifiedAfterTX(logSizeKey, keySize.Tx),
+			schema.PreconditionKeyNotModifiedAfterTX(logSizeKeyPlaceHolder, keySize.Tx),
 		},
 	})
 
@@ -92,6 +88,8 @@ func (r *repository) Add(ctx context.Context, line *app.LogLine) error {
 	return nil
 }
 
+// AddBatch adds a batch of logLines in a unique transaction. Applies same logic from Add LogLines, if all keys are new it will increment total log lines too
+// If any of the logLines already exists precondition will fail and to maintain consistency we will process entries one by one as Add does
 func (r *repository) AddBatch(ctx context.Context, lines []*app.LogLine) error {
 	// @TODO: Develop in transactional way too
 
@@ -100,6 +98,7 @@ func (r *repository) AddBatch(ctx context.Context, lines []*app.LogLine) error {
 }
 
 // @TODO: History, decompose it on ALL and N last items (last N txs)
+// History returns all History from all logLines
 func (r *repository) History(ctx context.Context, key string) error {
 	h, err := r.client.History(ctx, &schema.HistoryRequest{Key: []byte(key)})
 	if err != nil {
@@ -110,10 +109,9 @@ func (r *repository) History(ctx context.Context, key string) error {
 	return nil
 }
 
-var errCounterNotInitialized = errors.New("log line size counter not initialized")
-
+// Count returns total log lines, it's reading from total log lines key
 func (r *repository) Count(ctx context.Context) (uint64, error) {
-	raw, err := r.client.Get(ctx, logSizeKey)
+	raw, err := r.client.Get(ctx, logSizeKeyPlaceHolder)
 	if err != nil && immuerrors.FromError(err) != nil {
 		if errors.Is(immuerrors.FromError(err), store.ErrKeyNotFound) {
 			return 0, errCounterNotInitialized
@@ -123,6 +121,5 @@ func (r *repository) Count(ctx context.Context) (uint64, error) {
 		return 0, fmt.Errorf("failed to get logLines size, error: %w", err)
 	}
 
-	size := binary.BigEndian.Uint64(raw.Value)
-	return size, nil
+	return binary.BigEndian.Uint64(raw.Value), nil
 }

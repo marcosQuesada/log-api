@@ -80,6 +80,16 @@ func (l *LogService) CreateLogLine(ctx context.Context, line *v1.LogLine) (*v1.L
 func (l *LogService) CreateBatchLogLine(ctx context.Context, lines *v1.LogLines) (*v1.LogLines, error) {
 	log.Printf("CreateBatchLogLine Log Lines %v", lines)
 
+	logs := []*LogLine{}
+	for _, line := range lines.LogLines {
+		logs = append(logs, convert(line))
+	}
+
+	if err := l.repository.AddBatch(ctx, logs); err != nil {
+		return nil, status.Error(codes.Internal, "Cannot add LoginLine on repository!")
+	}
+
+	// @TODO: SOlve response
 	return &v1.LogLines{
 		LogLines: []*v1.LogLine{
 			{
@@ -98,8 +108,15 @@ func (l *LogService) CreateBatchLogLine(ctx context.Context, lines *v1.LogLines)
 	}, nil
 }
 
+// @TODO: Replace proper types
 func (l *LogService) GetAllHistory(ctx context.Context, e *emptypb.Empty) (*v1.LogLines, error) {
 	log.Printf("GetAllHistory Log Lines %v", e)
+
+	// @TODO: GET ALL Log Lines, get History from them
+	//if err := l.repository.History(ctx, key); err != nil {
+	//	return nil, status.Error(codes.Internal, "Cannot add LoginLine on repository!")
+	//}
+
 	return &v1.LogLines{
 		LogLines: []*v1.LogLine{
 			{
@@ -120,15 +137,19 @@ func (l *LogService) GetAllHistory(ctx context.Context, e *emptypb.Empty) (*v1.L
 
 func (l *LogService) GetLogCount(ctx context.Context, lines *v1.LogLines) (*v1.Count, error) {
 	log.Printf("GetLogCount Log Lines %v", lines)
-
+	total, err := l.repository.Count(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Cannot count total LoginLine on repository!")
+	}
 	return &v1.Count{
-		Total: 199,
+		Total: uint32(total), // @TODO: Solve it!
 	}, nil
 }
 
 func (l *LogService) GetLogById(ctx context.Context, line *v1.LogLineById) (*v1.LogLine, error) {
 	log.Printf("GetLogById Log Line %v", line)
 
+	//l, err := l.repository.Grt(ctx, line.Key)
 	return &v1.LogLine{
 		Source:    "foo.log",
 		Bucket:    "FakeBucket-XXX",
