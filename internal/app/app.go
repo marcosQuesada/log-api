@@ -5,9 +5,11 @@ import (
 	"log"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
 	v1 "github.com/marcosQuesada/log-api/internal/proto/v1"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type LogLine struct {
@@ -63,11 +65,15 @@ func NewLogService(r Repository) *LogService {
 func (l *LogService) CreateLogLine(ctx context.Context, line *v1.LogLine) (*v1.LogLine, error) {
 	log.Printf("Create Log Line %v", line)
 
+	if err := l.repository.Add(ctx, convert(line)); err != nil {
+		return nil, status.Error(codes.Internal, "Cannot add LoginLine on repository!")
+	}
+
 	return &v1.LogLine{
-		Id:        0,
-		Bucket:    "FakeBucket",
-		Data:      "FakeData",
-		CreatedAt: &timestamp.Timestamp{Seconds: time.Now().Unix()},
+		Source:    line.Source,
+		Bucket:    line.Bucket,
+		Data:      line.Data,
+		CreatedAt: line.CreatedAt,
 	}, nil
 }
 
@@ -77,29 +83,18 @@ func (l *LogService) CreateBatchLogLine(ctx context.Context, lines *v1.LogLines)
 	return &v1.LogLines{
 		LogLines: []*v1.LogLine{
 			{
-				Id:        0,
+				Source:    "foo.log",
 				Bucket:    "FakeBucket",
 				Data:      "FakeData",
-				CreatedAt: &timestamp.Timestamp{Seconds: time.Now().Unix()},
+				CreatedAt: timestamppb.New(time.Now()),
 			},
 			{
-				Id:        1,
+				Source:    "foo.log",
 				Bucket:    "FakeBucket1",
 				Data:      "FakeData1",
-				CreatedAt: &timestamp.Timestamp{Seconds: time.Now().Unix()},
+				CreatedAt: timestamppb.New(time.Now()),
 			},
 		},
-	}, nil
-}
-
-func (l *LogService) GetLogById(ctx context.Context, line *v1.LogLineById) (*v1.LogLine, error) {
-	log.Printf("GetLogById Log Line %v", line)
-
-	return &v1.LogLine{
-		Id:        99,
-		Bucket:    "FakeBucket-XXX",
-		Data:      "FakeData-XXX",
-		CreatedAt: &timestamp.Timestamp{Seconds: time.Now().Unix()},
 	}, nil
 }
 
@@ -108,16 +103,16 @@ func (l *LogService) GetAllHistory(ctx context.Context, e *emptypb.Empty) (*v1.L
 	return &v1.LogLines{
 		LogLines: []*v1.LogLine{
 			{
-				Id:        0,
+				Source:    "foo.log",
 				Bucket:    "FakeBucket",
 				Data:      "FakeData",
-				CreatedAt: &timestamp.Timestamp{Seconds: time.Now().Unix()},
+				CreatedAt: timestamppb.New(time.Now()),
 			},
 			{
-				Id:        1,
+				Source:    "foo.log",
 				Bucket:    "FakeBucket1",
 				Data:      "FakeData1",
-				CreatedAt: &timestamp.Timestamp{Seconds: time.Now().Unix()},
+				CreatedAt: timestamppb.New(time.Now()),
 			},
 		},
 	}, nil
@@ -129,4 +124,24 @@ func (l *LogService) GetLogCount(ctx context.Context, lines *v1.LogLines) (*v1.C
 	return &v1.Count{
 		Total: 199,
 	}, nil
+}
+
+func (l *LogService) GetLogById(ctx context.Context, line *v1.LogLineById) (*v1.LogLine, error) {
+	log.Printf("GetLogById Log Line %v", line)
+
+	return &v1.LogLine{
+		Source:    "foo.log",
+		Bucket:    "FakeBucket-XXX",
+		Data:      "FakeData-XXX",
+		CreatedAt: timestamppb.New(time.Now()),
+	}, nil
+}
+
+func convert(l *v1.LogLine) *LogLine {
+	return &LogLine{ // @TODO: Resolve key composition!
+		key:   l.Source,
+		tag:   l.Bucket,
+		value: l.Data,
+		time:  l.CreatedAt.AsTime(),
+	}
 }

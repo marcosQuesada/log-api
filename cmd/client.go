@@ -1,23 +1,68 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"log"
+	"time"
 
+	v1 "github.com/marcosQuesada/log-api/internal/proto/v1"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // clientCmd represents the client command
 var clientCmd = &cobra.Command{
 	Use:   "client",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "client command",
+	Long:  `client command description`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("client called")
+		log.Printf("client called, arguments %v \n", args)
+
+		if len(args) != 3 {
+			log.Fatalf("unexpected total arguments, expected: source, bucket, data, got %v", args)
+		}
+
+		addr := fmt.Sprintf("localhost:%d", grpcPort)
+		conn, err := grpc.Dial(addr,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
+		if err != nil {
+			log.Fatalf("client unable to connect, error: %v", err)
+		}
+
+		defer conn.Close()
+		c := v1.NewLogServiceClient(conn)
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		res, err := c.CreateLogLine(ctx, &v1.LogLine{
+			Source:    args[0],
+			Bucket:    args[1],
+			Data:      args[2],
+			CreatedAt: timestamppb.New(time.Now()),
+		})
+		if err != nil {
+			log.Fatalf("could not crreate log line: %v", err)
+		}
+
+		log.Printf("Created Log Line Source %s Bucket %s Data %s Date %s \n", res.Source, res.Bucket, res.Data, res.CreatedAt.AsTime().Format(time.RFC3339Nano))
+
+		r, err := c.GetAllHistory(ctx, &emptypb.Empty{})
+		if err != nil {
+			log.Fatalf("could not get all history: %v", err)
+		}
+		log.Printf("History: %v", r)
+
+		//u, err := c.GetLogById(ctx, &v1.LogLineById{Id: 12112})
+		//if err != nil {
+		//	log.Fatalf("could not get by ID: %v", err)
+		//}
+		//log.Printf("User: %v", u)
 	},
 }
 
