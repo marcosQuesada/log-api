@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package v1;
+
+option go_package = "/internal/infra/transport/proto/v1";
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+service LogService {
+  rpc CreateLogLine (LogLine) returns (LogLine) {
+    option (google.api.http) = {
+      post: "/api/v1/log"
+      body: "*"
+    };
+  }
+  rpc CreateBatchLogLine (LogLines) returns (LogLines) {
+    option (google.api.http) = {
+      post: "/api/v1/logs"
+      body: "*"
+    };
+  }
+  rpc GetAllHistory (google.protobuf.Empty) returns (LogLines) {
+    option (google.api.http) = {
+      get: "/api/v1/log/history"
+    };
+  }
+  rpc GetLogCount (LogLines) returns (Count) {
+    option (google.api.http) = {
+      get: "/api/v1/logs/count"
+    };
+  }
+  rpc GetLogById (LogLineById) returns (LogLine) {
+    option (google.api.http) = {
+      get: "/api/v1/log/id/{id}"
+    };
+  }
+}
+
+message LogLine {
+  uint32 id = 1;
+  string bucket = 2;
+  string data = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+message LogLines {
+  repeated LogLine log_lines = 1;
+}
+
+message Count {
+  uint32 total = 1;
+}
+
+message LogLineById {
+  uint32 id = 1;
+}
