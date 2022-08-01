@@ -117,8 +117,9 @@ func TestItAddMultipleTimesSameSingleLogLineAsNewAndIncrementsTotalLogLinesCount
 	}
 }
 
-func TestItGetsByIDPreviousInsertedLogLine(t *testing.T) {
+func TestItGetsByKeyPreviousInsertedLogLine(t *testing.T) {
 	defer reset()
+
 	r := NewRepository(cl)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -139,6 +140,7 @@ func TestItGetsByIDPreviousInsertedLogLine(t *testing.T) {
 
 func TestItGetsByPrefixPreviousInsertedLogLines(t *testing.T) {
 	defer reset()
+
 	r := NewRepository(cl)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -163,6 +165,7 @@ func TestItGetsByPrefixPreviousInsertedLogLines(t *testing.T) {
 
 func TestItGetsLastNInsertedLogLines(t *testing.T) {
 	defer reset()
+
 	r := NewRepository(cl)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -185,6 +188,30 @@ func TestItGetsLastNInsertedLogLines(t *testing.T) {
 	}
 
 	// @TODO: Fulfill order reflect.Equals
+}
+
+func TestItInsertsMultipleLogLinesInBatch(t *testing.T) {
+	defer reset()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	r := NewRepository(cl)
+	lines := []*app.LogLine{
+		app.NewLogLine("bar_00", "fake value"),
+		app.NewLogLine("bar_01", "fake value B"),
+	}
+	if err := r.AddBatch(ctx, lines); err != nil {
+		log.Fatalf("unexpected error adding batch, error %v", err)
+	}
+
+	all, err := r.GetLastNLogLines(ctx, 1)
+	if err != nil {
+		log.Fatalf("unable to get last N logs, error %v", err)
+	}
+
+	if expected, got := len(lines), len(all); expected != got {
+		t.Fatalf("values do not match, expected %d got %d", expected, got)
+	}
 }
 
 func setup() {

@@ -92,9 +92,47 @@ func (r *repository) Add(ctx context.Context, line *app.LogLine) error {
 // AddBatch adds a batch of logLines in a unique transaction. Applies same logic from Add LogLines, if all keys are new it will increment total log lines too
 // If any of the logLines already exists precondition will fail and to maintain consistency we will process entries one by one as Add does
 func (r *repository) AddBatch(ctx context.Context, lines []*app.LogLine) error { // @TODO: HANDLE IT!
-	// @TODO: Develop in transactional way too
+	kv := []*schema.KeyValue{}
+	pre := []*schema.Precondition{}
+	for _, line := range lines {
+		kv = append(kv, &schema.KeyValue{Key: line.Key(), Value: line.Value()})
+		pre = append(pre, schema.PreconditionKeyMustNotExist(line.Key()))
+	}
 
-	// on precondition failure process entries one by one
+	keySize, err := r.client.Get(context.Background(), logSizeKeyPlaceHolder)
+	if err != nil {
+		return fmt.Errorf("unable to get log line index %w", err)
+	}
+
+	if keySize == nil {
+		return errors.New("unexpected error key Size is Nil")
+	}
+
+	var size = binary.BigEndian.Uint64(keySize.Value)
+	size++
+	var sizeValue = make([]byte, 8)
+	binary.BigEndian.PutUint64(sizeValue, size)
+
+	kv = append(kv, &schema.KeyValue{Key: logSizeKeyPlaceHolder, Value: sizeValue})
+	pre = append(pre, schema.PreconditionKeyNotModifiedAfterTX(logSizeKeyPlaceHolder, keySize.Tx))
+	_, err = r.client.SetAll(ctx, &schema.SetRequest{
+		KVs:           kv,
+		Preconditions: pre,
+	})
+
+	// On premises failure, try to store lines one by one
+	if err != nil && immuerrors.FromError(err) != nil && immuerrors.FromError(err).Code() == immuerrors.CodIntegrityConstraintViolation {
+		for _, line := range lines {
+			_ = r.Add(ctx, line)
+		}
+
+		return nil
+	}
+
+	if err != nil {
+		return fmt.Errorf("unable to BatchLogLines, error %w", err)
+	}
+
 	return nil
 }
 
@@ -176,20 +214,21 @@ func (r *repository) GetLastNLogLines(ctx context.Context, n int) ([]*app.LogLin
 	logs := []*app.LogLine{}
 	for _, tx := range txs.GetTxs() {
 		for _, entry := range tx.Entries {
-			key := entry.Key[1:]
+			key := entry.Key[1:] // @TODO: HERE AGAIN!
 			if string(key) == string(logSizeKeyPlaceHolder) {
 				continue
 			}
-			item, err := r.client.Get(ctx, key) // @TODO: CHECK
+			item, err := r.client.Get(ctx, key) //
 			if err != nil {
+				// @TODO: CHECK THIS!
 				item, err = r.client.Get(ctx, entry.Key[1:]) // @TODO: SAME WEIRD ISSUE; FULL REVIEW
 				if err != nil {
 					log.Fatal(err) // @TODO:
 				}
 			}
 			log.Printf("retrieved key %s and val %s\n", item.Key, item.Value)
-			fmt.Printf("Entry Key %s value %s \n", entry.Key, entry.Value)
-			logs = append(logs, app.NewLogLine(string(entry.Key), string(entry.Value)))
+
+			logs = append(logs, app.NewLogLine(string(item.Key), string(item.Value)))
 		}
 	}
 
