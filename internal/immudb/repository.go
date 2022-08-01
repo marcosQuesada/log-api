@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/codenotary/immudb/embedded/store"
 	"github.com/codenotary/immudb/pkg/api/schema"
@@ -90,23 +91,30 @@ func (r *repository) Add(ctx context.Context, line *app.LogLine) error {
 
 // AddBatch adds a batch of logLines in a unique transaction. Applies same logic from Add LogLines, if all keys are new it will increment total log lines too
 // If any of the logLines already exists precondition will fail and to maintain consistency we will process entries one by one as Add does
-func (r *repository) AddBatch(ctx context.Context, lines []*app.LogLine) error {
+func (r *repository) AddBatch(ctx context.Context, lines []*app.LogLine) error { // @TODO: HANDLE IT!
 	// @TODO: Develop in transactional way too
 
 	// on precondition failure process entries one by one
 	return nil
 }
 
-// @TODO: History, decompose it on ALL and N last items (last N txs)
-// History returns all History from all logLines
-func (r *repository) History(ctx context.Context, key string) error {
+// History returns all History from a key
+func (r *repository) History(ctx context.Context, key string) (*app.LogLineHistory, error) {
 	h, err := r.client.History(ctx, &schema.HistoryRequest{Key: []byte(key)})
 	if err != nil {
-		return fmt.Errorf("unable to Get key %s history, error %w", key, err)
+		return nil, fmt.Errorf("unable to Get key %s history, error %w", key, err)
 	}
 	spew.Dump(h)
 
-	return nil
+	rv := []*app.LogLineRevision{}
+	for _, entry := range h.Entries {
+		rv = append(rv, &app.LogLineRevision{
+			Value:    entry.Value,
+			Tx:       entry.Tx,
+			Revision: entry.Revision,
+		})
+	}
+	return &app.LogLineHistory{Key: key, Revision: rv}, nil
 }
 
 // Count returns total log lines, it's reading from total log lines key
@@ -122,4 +130,61 @@ func (r *repository) Count(ctx context.Context) (uint64, error) {
 	}
 
 	return binary.BigEndian.Uint64(raw.Value), nil
+}
+
+func (r *repository) GetByKey(ctx context.Context, key string) (*app.LogLine, error) {
+	l, err := r.client.Get(ctx, []byte(key))
+	if err != nil {
+		return nil, fmt.Errorf("unable to get key %s error %v", key, err)
+	}
+
+	return app.NewLogLine(string(l.Key), string(l.Value)), nil
+}
+
+func (r *repository) GetByPrefix(ctx context.Context, prefix string) ([]*app.LogLine, error) {
+	all, err := r.client.Scan(ctx, &schema.ScanRequest{
+		Prefix: []byte(prefix),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("unable to get keys by prefix, error %v", err)
+	}
+
+	logs := []*app.LogLine{}
+	for _, entry := range all.Entries {
+		fmt.Printf("Entry Key %s value %s \n", entry.Key, entry.Value)
+		logs = append(logs, app.NewLogLine(string(entry.Key), string(entry.Value)))
+	}
+
+	return logs, nil
+}
+
+func (r *repository) GetLastNLogLines(ctx context.Context, n int) ([]*app.LogLine, error) {
+	st, err := r.client.CurrentState(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get immudb current state, error %w", err)
+	}
+
+	txs, err := r.client.TxScan(ctx, &schema.TxScanRequest{
+		InitialTx: st.TxId,
+		Limit:     uint32(n),
+		Desc:      true,
+	})
+
+	logs := []*app.LogLine{}
+	for _, tx := range txs.GetTxs() {
+		for _, entry := range tx.Entries {
+			item, err := r.client.Get(ctx, entry.Key[1:]) // @TODO: CHECK
+			if err != nil {
+				item, err = r.client.Get(ctx, entry.Key[1:])
+				if err != nil {
+					log.Fatal(err) // @TODO:
+				}
+			}
+			log.Printf("retrieved key %s and val %s\n", item.Key, item.Value)
+			fmt.Printf("Entry Key %s value %s \n", entry.Key, entry.Value)
+			logs = append(logs, app.NewLogLine(string(entry.Key), string(entry.Value)))
+		}
+	}
+
+	return logs, nil
 }
