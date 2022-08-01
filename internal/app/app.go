@@ -42,8 +42,22 @@ func (l *LogLine) Time() time.Time {
 	return l.time // @TODO: Format t0 string and use them as key
 }
 
-type LogService struct {
+type Repository interface {
+	Add(ctx context.Context, line *LogLine) error
+	AddBatch(ctx context.Context, lines []*LogLine) error
+	History(ctx context.Context, key string) error
+	Count(ctx context.Context) (uint64, error)
+}
+
+type LogService struct { // @TODO: Rethink project structure! THis will become an empty layer
 	v1.UnimplementedLogServiceServer
+	repository Repository
+}
+
+func NewLogService(r Repository) *LogService {
+	return &LogService{
+		repository: r,
+	}
 }
 
 func (l *LogService) CreateLogLine(ctx context.Context, line *v1.LogLine) (*v1.LogLine, error) {
