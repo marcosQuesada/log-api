@@ -11,7 +11,12 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+var (
+	jwtToken string
 )
 
 // clientCmd represents the client command
@@ -35,7 +40,8 @@ var clientCmd = &cobra.Command{
 		}
 		defer conn.Close()
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", fmt.Sprintf("Bearer %s", jwtToken))
+		ctx, cancel := context.WithTimeout(ctx, time.Second)
 		defer cancel()
 
 		c := v1.NewLogServiceClient(conn)
@@ -70,4 +76,5 @@ var clientCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(clientCmd)
+	clientCmd.PersistentFlags().StringVar(&jwtToken, "token", "", "jwt token")
 }

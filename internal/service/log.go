@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	v1 "github.com/marcosQuesada/log-api/internal/proto/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -131,17 +129,9 @@ func (l *LogService) histories(ctx context.Context, all []*LogLine) (*v1.LogLine
 
 	lh := []*v1.LogLineHistory{}
 	for _, line := range all {
-		key := strings.Replace(string(line.Key()), "\x00", "", -1) // @TODO:
-		h, err := l.repository.History(ctx, key)
+		h, err := l.repository.History(ctx, string(line.Key()))
 		if err != nil {
-			spew.Dump("CRITICAL", string(line.Key()))
-
-			//h, err = l.repository.History(ctx, string(line.Key()[1:]))
-			//if err != nil {
-			fmt.Printf("XXXX  key %s  error %v \n", line.Key(), err) // @TODO: Log errors
-			spew.Dump(line.Key())
 			return nil, status.Error(codes.Internal, "Cannot get History on repository!")
-			//}
 		}
 
 		r := []*v1.LogLineRevision{}
@@ -177,8 +167,7 @@ func convertLogLinesToProtocol(l *LogLine) *v1.LogLine {
 	}
 }
 
-// @TODO: Include bucket!
 func logLineKey(bucket, source string, t time.Time) string {
-	//return fmt.Sprintf("%s-%s", source, t.Format(time.RFC3339Nano))
+	//return fmt.Sprintf("%s-%s", source, t.UnixNano()) // @TODO: Include bucket!
 	return fmt.Sprintf("%s_%d", source, t.UnixNano())
 }

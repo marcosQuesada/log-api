@@ -141,6 +141,8 @@ func (r *repository) AddBatch(ctx context.Context, lines []*service.LogLine) err
 
 // History returns all revisions from a key
 func (r *repository) History(ctx context.Context, key string) (*service.LogLineHistory, error) {
+	key = cleanKey([]byte(key))
+
 	h, err := r.client.History(ctx, &schema.HistoryRequest{Key: []byte(key)})
 	if err != nil {
 		return nil, fmt.Errorf("unable to Get key %s history, error %w", key, err)

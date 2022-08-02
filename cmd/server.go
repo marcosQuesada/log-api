@@ -12,6 +12,8 @@ import (
 	"github.com/codenotary/immudb/pkg/client"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/marcosQuesada/log-api/internal/immudb"
+	"github.com/marcosQuesada/log-api/internal/jwt"
+	"github.com/marcosQuesada/log-api/internal/proto"
 	v1 "github.com/marcosQuesada/log-api/internal/proto/v1"
 	"github.com/marcosQuesada/log-api/internal/service"
 	"github.com/spf13/cobra"
@@ -21,12 +23,15 @@ import (
 const maxReceivedMessageSize = 1024 * 1024 * 20
 
 var (
-	grpcPort int = 9000
-	httpPort int = 9090
+	grpcPort int    = 9000
+	httpPort int    = 9090
+	token    string = "jwt-secret"
 
 	immudbUserName = "immudb"
 	immudbPassword = "immudb"
 	immudbDatabase = "defaultdb"
+	immudbPort     = 3322
+	immudbHost     = "localhost"
 )
 
 // serverCmd represents the server command
@@ -43,6 +48,9 @@ var serverCmd = &cobra.Command{
 		}
 		defer lis.Close() // @TODO: Move it to shutdown
 
+		jwtProc := jwt.NewProcessor(token)
+		auth := proto.NewJWTAuthAdapter(jwtProc)
+
 		cl := buildClient()
 		repo := immudb.NewRepository(cl)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -52,9 +60,11 @@ var serverCmd = &cobra.Command{
 		}
 		cancel()
 
+		opt := grpc.UnaryInterceptor(auth.Interceptor)
+		s := grpc.NewServer(opt)
 		svc := service.NewLogService(repo)
-		s := grpc.NewServer()
 		v1.RegisterLogServiceServer(s, svc)
+		v1.RegisterAuthServiceServer(s, service.NewAuth(jwtProc, service.NewAuthFakeRepository()))
 
 		// @TODO: Signal chan, add ordered shutdown
 		go func() {
@@ -76,9 +86,12 @@ var serverCmd = &cobra.Command{
 		}
 
 		mux := runtime.NewServeMux()
-		err = v1.RegisterLogServiceHandler(context.Background(), mux, conn)
-		if err != nil {
-			log.Fatalln("Failed to register http grpc gateway:", err)
+		if err = v1.RegisterLogServiceHandler(context.Background(), mux, conn); err != nil {
+			log.Fatalln("Failed to register log service http grpc gateway:", err)
+		}
+
+		if err = v1.RegisterAuthServiceHandler(context.Background(), mux, conn); err != nil {
+			log.Fatalln("Failed to register auth service http grpc gateway:", err)
 		}
 
 		gws := &http.Server{
@@ -101,7 +114,8 @@ func buildClient() client.ImmuClient {
 	o.Username = immudbUserName
 	o.Password = immudbPassword
 	o.Database = immudbDatabase
-	o.Port = 3322
+	o.Port = immudbPort
+	//o.Address = immudbHost // @TODO: CHECK
 
 	cl := client.NewClient().WithOptions(o)
 	ctx := context.Background()

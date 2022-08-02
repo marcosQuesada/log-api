@@ -33,9 +33,6 @@ It is not required to develop a full blown solution, but we should be able to se
 
 
 ## TODO
-- batch insertion
 - e2e test
-- repository TestMain procedure (unstable)
-- add authentication...
+  // Seems Stable - repository TestMain procedure (unstable)
 - add secondary indexes
-- 
