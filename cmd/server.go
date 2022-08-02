@@ -23,15 +23,15 @@ import (
 const maxReceivedMessageSize = 1024 * 1024 * 20
 
 var (
-	grpcPort int    = 9000
-	httpPort int    = 9090
-	token    string = "jwt-secret"
+	grpcPort  int
+	httpPort  int
+	jwtSecret string
 
-	immudbUserName = "immudb"
-	immudbPassword = "immudb"
-	immudbDatabase = "defaultdb"
-	immudbPort     = 3322
-	immudbHost     = "localhost"
+	immudbUserName string
+	immudbPassword string
+	immudbDatabase string
+	immudbPort     int
+	immudbHost     string
 )
 
 // serverCmd represents the server command
@@ -48,7 +48,7 @@ var serverCmd = &cobra.Command{
 		}
 		defer lis.Close() // @TODO: Move it to shutdown
 
-		jwtProc := jwt.NewProcessor(token)
+		jwtProc := jwt.NewProcessor(jwtSecret)
 		auth := proto.NewJWTAuthAdapter(jwtProc)
 
 		cl := buildClient()
@@ -107,6 +107,16 @@ var serverCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(serverCmd)
+
+	serverCmd.PersistentFlags().IntVar(&grpcPort, "grpc-port", 9000, "grpc port")
+	serverCmd.PersistentFlags().IntVar(&httpPort, "http-port", 9090, "http grpc gateway port")
+	serverCmd.PersistentFlags().StringVar(&jwtSecret, "jwt-secret", "jwt-secret", "jwt secret signature")
+	serverCmd.PersistentFlags().StringVar(&immudbUserName, "immudb-user-name", "immudb", "immudb user name")
+	serverCmd.PersistentFlags().StringVar(&immudbPassword, "immudb-password", "immudb", "immudb password")
+	serverCmd.PersistentFlags().StringVar(&immudbDatabase, "immudb-database", "defaultdb", "immudb database")
+	serverCmd.PersistentFlags().StringVar(&immudbHost, "immudb-host", "localhost", "immudb host")
+	serverCmd.PersistentFlags().IntVar(&immudbPort, "immudb-port", 3322, "immudb port")
+
 }
 
 func buildClient() client.ImmuClient {
@@ -115,7 +125,7 @@ func buildClient() client.ImmuClient {
 	o.Password = immudbPassword
 	o.Database = immudbDatabase
 	o.Port = immudbPort
-	//o.Address = immudbHost // @TODO: CHECK
+	o.Address = immudbHost
 
 	cl := client.NewClient().WithOptions(o)
 	ctx := context.Background()

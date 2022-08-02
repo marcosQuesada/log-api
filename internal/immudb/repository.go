@@ -9,10 +9,10 @@ import (
 	"github.com/codenotary/immudb/pkg/api/schema"
 	"github.com/codenotary/immudb/pkg/client"
 	immuerrors "github.com/codenotary/immudb/pkg/client/errors"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/marcosQuesada/log-api/internal/service"
 )
 
+// logSizeKeyPlaceHolder defines immudb key to store logLines count
 var logSizeKeyPlaceHolder = []byte("log_size")
 
 var errCounterNotInitialized = errors.New("log line size counter not initialized")
@@ -56,14 +56,7 @@ func (r *repository) Add(ctx context.Context, line *service.LogLine) error {
 		return errCounterNotInitialized
 	}
 
-	// @TODO: SEGREGATE
 	sizeValue := incBinaryCounter(keySize.Value)
-	//
-	//var size = binary.BigEndian.Uint64(keySize.Value)
-	//size++
-	//var sizeValue = make([]byte, 8)
-	//binary.BigEndian.PutUint64(sizeValue, size)
-
 	_, err = r.client.SetAll(ctx, &schema.SetRequest{
 		KVs: []*schema.KeyValue{
 			{Key: line.Key(), Value: line.Value()},
@@ -110,12 +103,6 @@ func (r *repository) AddBatch(ctx context.Context, lines []*service.LogLine) err
 	}
 
 	sizeValue := incBinaryCounter(keySize.Value)
-	//
-	//var size = binary.BigEndian.Uint64(keySize.Value)
-	//size++
-	//var sizeValue = make([]byte, 8)
-	//binary.BigEndian.PutUint64(sizeValue, size)
-
 	kv = append(kv, &schema.KeyValue{Key: logSizeKeyPlaceHolder, Value: sizeValue})
 	pre = append(pre, schema.PreconditionKeyNotModifiedAfterTX(logSizeKeyPlaceHolder, keySize.Tx))
 	_, err = r.client.SetAll(ctx, &schema.SetRequest{
@@ -147,7 +134,6 @@ func (r *repository) History(ctx context.Context, key string) (*service.LogLineH
 	if err != nil {
 		return nil, fmt.Errorf("unable to Get key %s history, error %w", key, err)
 	}
-	spew.Dump(h)
 
 	rv := []*service.LogLineRevision{}
 	for _, entry := range h.Entries {

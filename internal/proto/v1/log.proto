@@ -9,7 +9,7 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 
 service LogService {
-  rpc CreateLogLine (CreateLogLineRequest) returns (CreateLogLineResponse) { // @TODO: LogLine return ¿?
+  rpc CreateLogLine (CreateLogLineRequest) returns (CreateLogLineResponse) {
     option (google.api.http) = {
       post: "/api/v1/log"
       body: "*"

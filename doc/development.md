@@ -1,5 +1,8 @@
 # Development Notes
 
+Development path started defining ImmuDB repository, once achieved all requirements it gets wrapped by the gPC service layer, which is binded to the transport.
+First iteration achieves a gRPC server on the required API. As we are using GoogleAPI types we can load them externally in protoc compiling step, but this will require more local component installation, an alternative is to copy/paste those definitions in the google folder, I've used this workaround to speed up the development flow.
+
 ## API centric development
 
 log proto definitions, compile and autogenerate:
@@ -10,16 +13,21 @@ log proto definitions, compile and autogenerate:
 
 ```
 
-Log Http Gateway proto
+There's an extra mile that we can do to bind the grpc server to http through the gRPC Gateway implementation (it creates a gRPC client binded to the http handler layer). To allow grpc-gateway generation we need to decorate gRPC definitions, adding http descriptions on the exposed endpoints.
+
+Log Http Gateway proto compilation:
 ```
 protoc -I . --grpc-gateway_out=logtostderr=true:. internal/proto/v1/log.proto
 ```
-Google Api library:
-https://github.com/googleapis/googleapis/tree/master/google/api
 
+## gRPC client
+Using cobra is really useful on CLI command creation, a client single log line creation has been added, which expects 3 arguments as Source, Bucket and Value:
 
+```
+go run main.go client --token=$JWT foo_bar_key auth-app "fake log content"
+```
 
-## HTTP bindings
+## HTTP bindings @TODO: add auth JWT tokens on examples
 
 Store Single Log Line
 ```
