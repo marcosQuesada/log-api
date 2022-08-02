@@ -6,6 +6,8 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/codenotary/immudb/pkg/api/schema"
@@ -46,7 +48,7 @@ var serverCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalln("Unable to start grpc listener, error:", err)
 		}
-		defer lis.Close() // @TODO: Move it to shutdown
+		defer lis.Close()
 
 		jwtProc := jwt.NewProcessor(jwtSecret)
 		auth := proto.NewJWTAuthAdapter(jwtProc)
@@ -106,8 +108,6 @@ var serverCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(serverCmd)
-
 	serverCmd.PersistentFlags().IntVar(&grpcPort, "grpc-port", 9000, "grpc port")
 	serverCmd.PersistentFlags().IntVar(&httpPort, "http-port", 9090, "http grpc gateway port")
 	serverCmd.PersistentFlags().StringVar(&jwtSecret, "jwt-secret", "jwt-secret", "jwt secret signature")
@@ -117,6 +117,43 @@ func init() {
 	serverCmd.PersistentFlags().StringVar(&immudbHost, "immudb-host", "localhost", "immudb host")
 	serverCmd.PersistentFlags().IntVar(&immudbPort, "immudb-port", 3322, "immudb port")
 
+	if p := os.Getenv("jwt-secret"); p != "" {
+		jwtSecret = p
+	}
+	if p := os.Getenv("immudb-user-name"); p != "" {
+		immudbUserName = p
+	}
+	if p := os.Getenv("immudb-password"); p != "" {
+		immudbPassword = p
+	}
+	if p := os.Getenv("immudb-database"); p != "" {
+		immudbDatabase = p
+	}
+	if p := os.Getenv("immudb-host"); p != "" {
+		immudbHost = p
+	}
+
+	if p := os.Getenv("grpc-port"); p != "" {
+		gp, err := strconv.ParseInt(p, 10, 64)
+		if err != nil {
+			log.Fatalf("unable to parse grpc port, got %s error %v", p, err)
+		}
+		grpcPort = int(gp)
+	}
+	if p := os.Getenv("http-port"); p != "" {
+		hp, err := strconv.ParseInt(p, 10, 64)
+		if err != nil {
+			log.Fatalf("unable to parse http port, got %s error %v", p, err)
+		}
+		httpPort = int(hp)
+	}
+	if p := os.Getenv("immudb-port"); p != "" {
+		ip, err := strconv.ParseInt(p, 10, 64)
+		if err != nil {
+			log.Fatalf("unable to parse immudb port, got %s error %v", p, err)
+		}
+		immudbPort = int(ip)
+	}
 }
 
 func buildClient() client.ImmuClient {
@@ -130,11 +167,11 @@ func buildClient() client.ImmuClient {
 	cl := client.NewClient().WithOptions(o)
 	ctx := context.Background()
 	if err := cl.OpenSession(ctx, []byte(o.Username), []byte(o.Password), o.Database); err != nil {
-		log.Fatalln("Failed to OpenSession. Reason:", err.Error())
+		log.Fatalln("Failed to OpenSession on Immudb server, Reason:", err.Error())
 	}
 
 	if _, err := cl.UseDatabase(ctx, &schema.Database{DatabaseName: o.Database}); err != nil {
-		log.Fatalln("Failed to use the database. Reason:", err)
+		log.Fatalln("Failed to use the database  on Immudb server, Reason:", err)
 	}
 
 	return cl

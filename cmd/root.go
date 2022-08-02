@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/marcosQuesada/log-api/cmd/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -21,4 +22,10 @@ func Execute() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+}
+
+func init() {
+	rootCmd.AddCommand(serverCmd)
+	rootCmd.AddCommand(cli.ClientCmd)
+
 }

@@ -10,7 +10,6 @@ log proto definitions, compile and autogenerate:
  protoc --go_out=. --go_opt=paths=source_relative \
     --go-grpc_out=. --go-grpc_opt=paths=source_relative \
     internal/proto/v1/log.proto
-
 ```
 
 There's an extra mile that we can do to bind the grpc server to http through the gRPC Gateway implementation (it creates a gRPC client binded to the http handler layer). To allow grpc-gateway generation we need to decorate gRPC definitions, adding http descriptions on the exposed endpoints.
@@ -108,4 +107,73 @@ Use JWT from http
 curl -X GET -H "Authorization: Bearer $JWT" http://localhost:9090/api/v1/logs/count                                                                              
 
 {"total":10}
+```
+
+### gRPC Client CLI
+#### Login
+```
+go run main.go client login                                   
+login called
+2022/08/02 17:16:08 User: token:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwcmluY2lwYWxfaWQiOiI4ZGJmZTYyYi05YjA4LTQzYTQtOWU0My03ZTNkZTUxMzJjMDkiLCJlbWFpbCI6ImZha2VfdXNlciIsImV4cCI6MTY1OTUzOTc2OCwianRpIjoiOGRiZmU2MmItOWIwOC00M2E0LTllNDMtN2UzZGU1MTMyYzA5MTY1OTQ1MzM2ODA2NDQwNTA4MiIsImlhdCI6MTY1OTQ1MzM2OCwiaXNzIjoiTG9nIEFQSSIsInN1YiI6IkxvZ2dlciJ9.0gvDS5YZyqOt2V4NEVCTxObIrr6RTcsG4Wm-5HDcMGE"
+```
+
+#### Export JWT token to use it from the rest of commands
+```
+export JWT=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwcmluY2lwYWxfaWQiOiI4ZGJmZTYyYi05YjA4LTQzYTQtOWU0My03ZTNkZTUxMzJjMDkiLCJlbWFpbCI6ImZha2VfdXNlciIsImV4cCI6MTY1OTUzOTc2OCwianRpIjoiOGRiZmU2MmItOWIwOC00M2E0LTllNDMtN2UzZGU1MTMyYzA5MTY1OTQ1MzM2ODA2NDQwNTA4MiIsImlhdCI6MTY1OTQ1MzM2OCwiaXNzIjoiTG9nIEFQSSIsInN1YiI6IkxvZ2dlciJ9.0gvDS5YZyqOt2V4NEVCTxObIrr6RTcsG4Wm-5HDcMGE
+```
+
+#### Add Single Log Line
+```
+go run main.go client add --token=$JWT fox_bar_key_1 auth-app "fake log content"
+
+2022/08/02 17:26:22 add called, arguments [fox_bar_key_1 auth-app fake log content] 
+2022/08/02 17:26:22 Created Log Line key fox_bar_key_1_1659453982695309812
+2022/08/02 17:26:22 History Key fox_bar_key_1_1659453982695309812 Revision [tx:5  value:"fake log content"  revision:1]
+
+```
+
+#### Add Bach of log lines @TODO: PENDING
+
+#### All log lines history
+```
+╰─ go run main.go client history-all --token=$JWT
+historyAll called
+2022/08/02 18:10:25 History Key foo_bar_key_1_1659447503707097981 Revision [tx:3 value:"fake log content" revision:1]
+2022/08/02 18:10:25 History Key foo_bar_key_1_1659447602626380233 Revision [tx:4 value:"fake log content" revision:1]
+2022/08/02 18:10:25 History Key fox_bar_key_1_1659453982695309812 Revision [tx:5 value:"fake log content" revision:1]
+2022/08/02 18:10:25 History Key log_size Revision [] // @TODO: Remove it ¿?
+```
+
+#### Last N transactioned log lines
+```
+╰─ go run main.go client history-n --token=$JWT --number=3
+history N last transactions called
+2022/08/02 18:12:29 History Key fox_bar_key_1_1659453982695309812 Revision [tx:5  value:"fake log content"  revision:1]
+2022/08/02 18:12:29 History Key foo_bar_key_1_1659447602626380233 Revision [tx:4  value:"fake log content"  revision:1]
+2022/08/02 18:12:29 History Key foo_bar_key_1_1659447503707097981 Revision [tx:3  value:"fake log content"  revision:1]
+```
+
+#### Count Log Lines entries
+```
+go run main.go client count --token=$JWT                                     
+
+2022/08/02 17:26:34 User: total:3
+
+```
+
+#### List log lines by Key
+```
+go run main.go client get-by-key --token=$JWT --key=foo_bar_key_1_1659447602626380233
+
+getByKey called
+2022/08/02 18:13:57 User: key:"foo_bar_key_1_1659447602626380233"  value:"fake log content"
+```
+
+#### List log lines by Key prefix
+
+```
+go run main.go client get-by-prefix --token=$JWT --prefix=foo
+getByPrefix called  with prefix  foo
+2022/08/02 15:49:10 LogLine with key foo_bar_key_1_1659447503707097981: key:"foo_bar_key_1_1659447503707097981" value:"fake log content"
+2022/08/02 15:49:10 LogLine with key foo_bar_key_1_1659447602626380233: key:"foo_bar_key_1_1659447602626380233" value:"fake log content"
 ```

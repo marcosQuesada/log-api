@@ -47,7 +47,7 @@ func (l *LogService) CreateLogLine(ctx context.Context, r *v1.CreateLogLineReque
 }
 
 func (l *LogService) BatchCreateLogLines(ctx context.Context, lines *v1.BatchCreateLogLinesRequest) (*v1.BatchCreateLogLinesResponse, error) {
-	log.Printf("CreateBatchLogLine Log Lines %v", lines)
+	log.Printf("BatchCreateLogLines Log Lines %v", lines)
 
 	logs := []*LogLine{}
 	ids := []string{}
@@ -125,8 +125,6 @@ func (l *LogService) GetLogLinesByPrefix(ctx context.Context, line *v1.LogLineBy
 }
 
 func (l *LogService) histories(ctx context.Context, all []*LogLine) (*v1.LogLineHistories, error) {
-	log.Printf("histories Log Lines %v \n", all)
-
 	lh := []*v1.LogLineHistory{}
 	for _, line := range all {
 		h, err := l.repository.History(ctx, string(line.Key()))

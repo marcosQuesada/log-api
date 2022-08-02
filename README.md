@@ -79,22 +79,6 @@ More info about the development path can be found in the path: /doc/development.
 - key/value mode does not offer Count command yet
 - SQL mode does not offer detailed histories as required
 
-## Project Run
-Generate docker container:
-```
-docker build -t log-api .
-```
-
-ImmuDB can be started as a docker container too:
-```
-docker run -it -d -p 3322:3322 -p 9497:9497 --name immudb codenotary/immudb:latest
-```
-
-Start Log-Api container as:
-```
-docker run -it -d -p 9000:9000 -p 9090:9090 --name log-api log-api:latest
-```
-
 ## Improvements
 - grpc client side auth interceptor
 - next steps....
@@ -103,6 +87,8 @@ docker run -it -d -p 9000:9000 -p 9090:9090 --name log-api log-api:latest
 
 
 ## TODO
+- Add OS environment var bindings
+  - immudb-host ISSUE
 - server entryPoint
   - use errorGroup with context on both transport server
   - handle application shutdown in a controlled manner 
@@ -111,5 +97,45 @@ docker run -it -d -p 9000:9000 -p 9090:9090 --name log-api log-api:latest
 - e2e test
   // Seems Stable - repository TestMain procedure (unstable)
 - add secondary indexes
-- Dockerfile
-  - Docker compose instructions
+- Docker compose instructions
+
+- GetCount seems to fail on empty data...first start @TODO
+``` // @TODO: FIX IT
+curl -X GET -H "Authorization: Bearer $JWT" http://localhost:9090/api/v1/logs/count   
+{}
+```
+
+### Run Application from docker
+Build docker image:
+```
+docker build -t log-api .
+```
+
+Create a bridge docker network:
+```
+docker network create immudb-net
+```
+Immudb on docker bridged network:
+```
+docker run -it -d --net immudb-net -p 3322:3322 -p 9497:9497 --name immudb codenotary/immudb:latest
+```
+Run Log-API as:
+```
+docker run -it -d --net immudb-net -p 9000:9000 -p 9090:9090 -e immudb-host=immudb --name log_api log-api:latest ./app/api server 
+```
+
+Test it executing gRPC client or curl from local:
+```
+go run main.go client --token=$JWT foo_bar_key_1 auth-app "fake log content"          
+2022/08/02 14:39:28 client called, arguments [foo_bar_key_1 auth-app fake log content] 
+2022/08/02 14:39:28 Created Log Line key foo_bar_key_1_1659443968106459720
+2022/08/02 14:39:28 History Key foo_bar_key_1_1659443968106459720 Revision [tx:3 value:"fake log content" revision:1]
+
+```
+
+Ensure JWT token is exported (use Login flow to get proper auth token)
+```
+curl -X GET -H "Authorization: Bearer $JWT" http://localhost:9090/api/v1/logs/count   
+{"total":"1"}                                                                    
+```
+
