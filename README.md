@@ -28,3 +28,14 @@ It is not required to develop a full blown solution, but we should be able to se
 ## Improvements
 - next steps....
   - Precondition fail on concurrent writers needs a retry loop
+  - grpc client side auth interceptor
+- errorGroups with context to handle grpc and http servers
+
+
+## TODO
+- batch insertion
+- e2e test
+- repository TestMain procedure (unstable)
+- add authentication...
+- add secondary indexes
+- 

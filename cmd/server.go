@@ -11,9 +11,9 @@ import (
 	"github.com/codenotary/immudb/pkg/api/schema"
 	"github.com/codenotary/immudb/pkg/client"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"github.com/marcosQuesada/log-api/internal/app"
 	"github.com/marcosQuesada/log-api/internal/immudb"
 	v1 "github.com/marcosQuesada/log-api/internal/proto/v1"
+	"github.com/marcosQuesada/log-api/internal/service"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )
@@ -35,11 +35,13 @@ var serverCmd = &cobra.Command{
 	Short: "api server",
 	Long:  `api server`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Printf("API server started, grpc port %d", grpcPort)
+		log.Printf("API server started, gRPC port %d HTTP gRPC-Gateway %d", grpcPort, httpPort)
+
 		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
 		if err != nil {
 			log.Fatalln("Unable to start grpc listener, error:", err)
 		}
+		defer lis.Close() // @TODO: Move it to shutdown
 
 		cl := buildClient()
 		repo := immudb.NewRepository(cl)
@@ -50,13 +52,15 @@ var serverCmd = &cobra.Command{
 		}
 		cancel()
 
-		svc := app.NewLogService(repo)
+		svc := service.NewLogService(repo)
 		s := grpc.NewServer()
 		v1.RegisterLogServiceServer(s, svc)
 
 		// @TODO: Signal chan, add ordered shutdown
 		go func() {
-			log.Fatalln(s.Serve(lis))
+			if err := s.Serve(lis); err != nil {
+				log.Fatalf("error serving %v", err)
+			}
 		}()
 
 		// Create a client connection to the gRPC server bind to gRPC-Gateway proxy
@@ -77,13 +81,14 @@ var serverCmd = &cobra.Command{
 			log.Fatalln("Failed to register http grpc gateway:", err)
 		}
 
-		gwServer := &http.Server{
-			Addr:    fmt.Sprintf(":%d", httpPort),
-			Handler: mux,
+		gws := &http.Server{
+			Addr:         fmt.Sprintf("0.0.0.0:%d", httpPort),
+			Handler:      mux,
+			ReadTimeout:  10 * time.Second,
+			WriteTimeout: 10 * time.Second,
 		}
 
-		log.Printf("Serving gRPC-Gateway on %s:%d \n", "localhost", httpPort)
-		log.Fatalln(gwServer.ListenAndServe())
+		log.Fatalln(gws.ListenAndServe())
 	},
 }
 

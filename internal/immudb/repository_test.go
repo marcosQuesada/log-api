@@ -14,7 +14,7 @@ import (
 	"github.com/codenotary/immudb/pkg/client"
 	"github.com/codenotary/immudb/pkg/server"
 	"github.com/codenotary/immudb/pkg/server/servertest"
-	"github.com/marcosQuesada/log-api/internal/app"
+	"github.com/marcosQuesada/log-api/internal/service"
 	"google.golang.org/grpc"
 )
 
@@ -62,8 +62,8 @@ func TestItAddTwoLogLineAsNewAndIncrementsTotalLogLinesCounter(t *testing.T) {
 	defer cancel()
 
 	r := NewRepository(cl)
-	_ = r.Add(ctx, app.NewLogLine("foo_0", "fake value"))
-	_ = r.Add(ctx, app.NewLogLine("foo_1", "fake value B"))
+	_ = r.Add(ctx, service.NewLogLine("foo_0", "fake value"))
+	_ = r.Add(ctx, service.NewLogLine("foo_1", "fake value B"))
 
 	v, err := r.Count(ctx)
 	if err != nil {
@@ -82,10 +82,10 @@ func TestItGetHistoryFromMultipleUpdatedLogLine(t *testing.T) {
 	defer cancel()
 
 	key := "foo_9"
-	_ = r.Add(ctx, app.NewLogLine(key, "fake value"))
-	_ = r.Add(ctx, app.NewLogLine(key, "fake value X"))
-	_ = r.Add(ctx, app.NewLogLine(key, "fake value XX"))
-	_ = r.Add(ctx, app.NewLogLine(key, "fake value XXX"))
+	_ = r.Add(ctx, service.NewLogLine(key, "fake value"))
+	_ = r.Add(ctx, service.NewLogLine(key, "fake value X"))
+	_ = r.Add(ctx, service.NewLogLine(key, "fake value XX"))
+	_ = r.Add(ctx, service.NewLogLine(key, "fake value XXX"))
 
 	h, err := r.History(ctx, key)
 	if err != nil {
@@ -93,7 +93,7 @@ func TestItGetHistoryFromMultipleUpdatedLogLine(t *testing.T) {
 	}
 
 	if expected, got := 4, len(h.Revision); expected != got {
-		t.Errorf("unexpected total Revisions")
+		t.Errorf("unexpected total Revisions, expected %d got %d", expected, got)
 	}
 }
 
@@ -104,8 +104,8 @@ func TestItAddMultipleTimesSameSingleLogLineAsNewAndIncrementsTotalLogLinesCount
 	defer cancel()
 
 	key := "foo_0"
-	_ = r.Add(context.Background(), app.NewLogLine(key, "fake value"))
-	_ = r.Add(ctx, app.NewLogLine(key, "fake value B"))
+	_ = r.Add(context.Background(), service.NewLogLine(key, "fake value"))
+	_ = r.Add(ctx, service.NewLogLine(key, "fake value B"))
 
 	v, err := r.Count(ctx)
 	if err != nil {
@@ -126,7 +126,7 @@ func TestItGetsByKeyPreviousInsertedLogLine(t *testing.T) {
 
 	key := "foo_0"
 	value := "fake value"
-	_ = r.Add(context.Background(), app.NewLogLine(key, value))
+	_ = r.Add(context.Background(), service.NewLogLine(key, value))
 
 	ll, err := r.GetByKey(ctx, key)
 	if err != nil {
@@ -146,9 +146,9 @@ func TestItGetsByPrefixPreviousInsertedLogLines(t *testing.T) {
 	defer cancel()
 
 	key := "foo_0"
-	_ = r.Add(context.Background(), app.NewLogLine(key, "fake value"))
+	_ = r.Add(context.Background(), service.NewLogLine(key, "fake value"))
 	keyB := "foo_1"
-	_ = r.Add(context.Background(), app.NewLogLine(keyB, "fake value b"))
+	_ = r.Add(context.Background(), service.NewLogLine(keyB, "fake value b"))
 
 	prefix := "foo"
 	all, err := r.GetByPrefix(ctx, prefix)
@@ -167,15 +167,15 @@ func TestItGetsLastNInsertedLogLines(t *testing.T) {
 	defer reset()
 
 	r := NewRepository(cl)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
+	//ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	//defer cancel()
+	ctx := context.Background()
 	key := "foo_0"
-	_ = r.Add(context.Background(), app.NewLogLine(key, "fake value"))
+	_ = r.Add(context.Background(), service.NewLogLine(key, "fake value"))
 	keyB := "foo_1"
-	_ = r.Add(context.Background(), app.NewLogLine(keyB, "fake value b"))
+	_ = r.Add(context.Background(), service.NewLogLine(keyB, "fake value b"))
 	keyC := "foo_x"
-	_ = r.Add(context.Background(), app.NewLogLine(keyC, "fake value c"))
+	_ = r.Add(context.Background(), service.NewLogLine(keyC, "fake value c"))
 
 	size := 3
 	all, err := r.GetLastNLogLines(ctx, size)
@@ -196,9 +196,9 @@ func TestItInsertsMultipleLogLinesInBatch(t *testing.T) {
 	defer cancel()
 
 	r := NewRepository(cl)
-	lines := []*app.LogLine{
-		app.NewLogLine("bar_00", "fake value"),
-		app.NewLogLine("bar_01", "fake value B"),
+	lines := []*service.LogLine{
+		service.NewLogLine("bar_00", "fake value"),
+		service.NewLogLine("bar_01", "fake value B"),
 	}
 	if err := r.AddBatch(ctx, lines); err != nil {
 		log.Fatalf("unexpected error adding batch, error %v", err)

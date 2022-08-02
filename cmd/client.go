@@ -33,14 +33,12 @@ var clientCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("client unable to connect, error: %v", err)
 		}
-
 		defer conn.Close()
-		c := v1.NewLogServiceClient(conn)
-		// @TODO:
-		//ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		//defer cancel()
 
-		ctx := context.Background()
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		c := v1.NewLogServiceClient(conn)
 		res, err := c.CreateLogLine(ctx, &v1.CreateLogLineRequest{
 			Source:    strings.Trim(args[0], " "),
 			Bucket:    strings.Trim(args[1], " "),

@@ -1,9 +1,10 @@
-package app
+package service
 
 import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -18,13 +19,13 @@ type Repository interface {
 	AddBatch(ctx context.Context, lines []*LogLine) error
 	History(ctx context.Context, key string) (*LogLineHistory, error)
 	Count(ctx context.Context) (uint64, error)
-
 	GetByKey(ctx context.Context, key string) (*LogLine, error)
 	GetByPrefix(ctx context.Context, prefix string) ([]*LogLine, error)
 	GetLastNLogLines(ctx context.Context, n int) ([]*LogLine, error)
 }
 
-type LogService struct { // @TODO: Rethink project structure! THis will become an empty layer
+// @TODO: Rethink project structure! THis will become an empty layer
+type LogService struct {
 	v1.UnimplementedLogServiceServer
 	repository Repository
 }
@@ -131,15 +132,17 @@ func (l *LogService) histories(ctx context.Context, all []*LogLine) (*v1.LogLine
 
 	lh := []*v1.LogLineHistory{}
 	for _, line := range all {
-		//h, err := l.repository.History(ctx, string(line.Key()[1:])) // @TODO: WHY??
-		h, err := l.repository.History(ctx, string(line.Key())) // @TODO: WHY??
+		key := strings.Replace(string(line.Key()), "\x00", "", -1) // @TODO:
+		h, err := l.repository.History(ctx, key)
 		if err != nil {
-			h, err = l.repository.History(ctx, string(line.Key()[1:]))
-			if err != nil {
-				fmt.Printf("XXXX  key %s  error %v \n", line.Key(), err) // @TODO: Log errors
-				spew.Dump(line.Key())
-				return nil, status.Error(codes.Internal, "Cannot get History on repository!")
-			}
+			spew.Dump("CRITICAL", string(line.Key()))
+
+			//h, err = l.repository.History(ctx, string(line.Key()[1:]))
+			//if err != nil {
+			fmt.Printf("XXXX  key %s  error %v \n", line.Key(), err) // @TODO: Log errors
+			spew.Dump(line.Key())
+			return nil, status.Error(codes.Internal, "Cannot get History on repository!")
+			//}
 		}
 
 		r := []*v1.LogLineRevision{}
@@ -172,7 +175,6 @@ func convertLogLinesToProtocol(l *LogLine) *v1.LogLine {
 	return &v1.LogLine{
 		Key:   l.key,
 		Value: l.value,
-		//CreatedAt: // @TODO: Pending
 	}
 }
 

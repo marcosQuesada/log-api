@@ -1,6 +1,7 @@
 # Development Notes
 
 ## API centric development
+
 proto definitions, compile and autogenerate:
 ```
  protoc --go_out=. --go_opt=paths=source_relative \
@@ -12,6 +13,8 @@ Http Gateway
 ```
 protoc -I . --grpc-gateway_out=logtostderr=true:. internal/proto/v1/log.proto
 ```
+Google Api library:
+https://github.com/googleapis/googleapis/tree/master/google/api
 
 ## HTTP bindings
 
