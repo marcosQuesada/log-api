@@ -174,20 +174,20 @@ func local_request_LogService_GetLastNLogLinesHistory_0(ctx context.Context, mar
 
 }
 
-func request_LogService_GetLogCount_0(ctx context.Context, marshaler runtime.Marshaler, client LogServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_LogService_GetLogLineCount_0(ctx context.Context, marshaler runtime.Marshaler, client LogServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq emptypb.Empty
 	var metadata runtime.ServerMetadata
 
-	msg, err := client.GetLogCount(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.GetLogLineCount(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_LogService_GetLogCount_0(ctx context.Context, marshaler runtime.Marshaler, server LogServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_LogService_GetLogLineCount_0(ctx context.Context, marshaler runtime.Marshaler, server LogServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq emptypb.Empty
 	var metadata runtime.ServerMetadata
 
-	msg, err := server.GetLogCount(ctx, &protoReq)
+	msg, err := server.GetLogLineCount(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -398,7 +398,7 @@ func RegisterLogServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux,
 
 	})
 
-	mux.Handle("GET", pattern_LogService_GetLogCount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_LogService_GetLogLineCount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -409,7 +409,7 @@ func RegisterLogServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux,
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_LogService_GetLogCount_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_LogService_GetLogLineCount_0(rctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -417,7 +417,7 @@ func RegisterLogServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux,
 			return
 		}
 
-		forward_LogService_GetLogCount_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_LogService_GetLogLineCount_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -588,7 +588,7 @@ func RegisterLogServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux,
 
 	})
 
-	mux.Handle("GET", pattern_LogService_GetLogCount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("GET", pattern_LogService_GetLogLineCount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -597,14 +597,14 @@ func RegisterLogServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux,
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_LogService_GetLogCount_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_LogService_GetLogLineCount_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_LogService_GetLogCount_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_LogService_GetLogLineCount_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -660,7 +660,7 @@ var (
 
 	pattern_LogService_GetLastNLogLinesHistory_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"api", "v1", "log", "history", "last", "n"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_LogService_GetLogCount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "logs", "count"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_LogService_GetLogLineCount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"api", "v1", "logs", "count"}, "", runtime.AssumeColonVerbOpt(true)))
 
 	pattern_LogService_GetLogLineByKey_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 3}, []string{"api", "v1", "log", "key"}, "", runtime.AssumeColonVerbOpt(true)))
 
@@ -676,7 +676,7 @@ var (
 
 	forward_LogService_GetLastNLogLinesHistory_0 = runtime.ForwardResponseMessage
 
-	forward_LogService_GetLogCount_0 = runtime.ForwardResponseMessage
+	forward_LogService_GetLogLineCount_0 = runtime.ForwardResponseMessage
 
 	forward_LogService_GetLogLineByKey_0 = runtime.ForwardResponseMessage
 

@@ -32,7 +32,7 @@ service LogService {
     };
   }
 
-  rpc GetLogCount (google.protobuf.Empty) returns (Count) {
+  rpc GetLogLineCount (google.protobuf.Empty) returns (Count) {
     option (google.api.http) = {
       get: "/api/v1/logs/count"
     };

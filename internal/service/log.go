@@ -24,7 +24,6 @@ type Repository interface {
 	GetLastNLogLines(ctx context.Context, n int) ([]*LogLine, error)
 }
 
-// @TODO: Rethink project structure! THis will become an empty layer
 type LogService struct {
 	v1.UnimplementedLogServiceServer
 	repository Repository
@@ -91,7 +90,7 @@ func (l *LogService) GetLastNLogLinesHistory(ctx context.Context, e *v1.LastNLog
 	return l.histories(ctx, all)
 }
 
-func (l *LogService) GetLogCount(ctx context.Context, e *emptypb.Empty) (*v1.Count, error) {
+func (l *LogService) GetLogLineCount(ctx context.Context, e *emptypb.Empty) (*v1.Count, error) {
 	log.Println("GetLogCount Log Lines")
 	total, err := l.repository.Count(ctx)
 	if err != nil {

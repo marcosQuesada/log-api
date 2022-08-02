@@ -23,7 +23,7 @@ type LogServiceClient interface {
 	BatchCreateLogLines(ctx context.Context, in *BatchCreateLogLinesRequest, opts ...grpc.CallOption) (*BatchCreateLogLinesResponse, error)
 	GetAllLogLinesHistory(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*LogLineHistories, error)
 	GetLastNLogLinesHistory(ctx context.Context, in *LastNLogLinesHistoryRequest, opts ...grpc.CallOption) (*LogLineHistories, error)
-	GetLogCount(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Count, error)
+	GetLogLineCount(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Count, error)
 	GetLogLineByKey(ctx context.Context, in *LogLineByKeyRequest, opts ...grpc.CallOption) (*LogLine, error)
 	GetLogLinesByPrefix(ctx context.Context, in *LogLineByPrefixRequest, opts ...grpc.CallOption) (*LogLines, error)
 }
@@ -72,9 +72,9 @@ func (c *logServiceClient) GetLastNLogLinesHistory(ctx context.Context, in *Last
 	return out, nil
 }
 
-func (c *logServiceClient) GetLogCount(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Count, error) {
+func (c *logServiceClient) GetLogLineCount(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Count, error) {
 	out := new(Count)
-	err := c.cc.Invoke(ctx, "/v1.LogService/GetLogCount", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/v1.LogService/GetLogLineCount", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ type LogServiceServer interface {
 	BatchCreateLogLines(context.Context, *BatchCreateLogLinesRequest) (*BatchCreateLogLinesResponse, error)
 	GetAllLogLinesHistory(context.Context, *emptypb.Empty) (*LogLineHistories, error)
 	GetLastNLogLinesHistory(context.Context, *LastNLogLinesHistoryRequest) (*LogLineHistories, error)
-	GetLogCount(context.Context, *emptypb.Empty) (*Count, error)
+	GetLogLineCount(context.Context, *emptypb.Empty) (*Count, error)
 	GetLogLineByKey(context.Context, *LogLineByKeyRequest) (*LogLine, error)
 	GetLogLinesByPrefix(context.Context, *LogLineByPrefixRequest) (*LogLines, error)
 	mustEmbedUnimplementedLogServiceServer()
@@ -129,8 +129,8 @@ func (UnimplementedLogServiceServer) GetAllLogLinesHistory(context.Context, *emp
 func (UnimplementedLogServiceServer) GetLastNLogLinesHistory(context.Context, *LastNLogLinesHistoryRequest) (*LogLineHistories, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLastNLogLinesHistory not implemented")
 }
-func (UnimplementedLogServiceServer) GetLogCount(context.Context, *emptypb.Empty) (*Count, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetLogCount not implemented")
+func (UnimplementedLogServiceServer) GetLogLineCount(context.Context, *emptypb.Empty) (*Count, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetLogLineCount not implemented")
 }
 func (UnimplementedLogServiceServer) GetLogLineByKey(context.Context, *LogLineByKeyRequest) (*LogLine, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLogLineByKey not implemented")
@@ -223,20 +223,20 @@ func _LogService_GetLastNLogLinesHistory_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LogService_GetLogCount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _LogService_GetLogLineCount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LogServiceServer).GetLogCount(ctx, in)
+		return srv.(LogServiceServer).GetLogLineCount(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/v1.LogService/GetLogCount",
+		FullMethod: "/v1.LogService/GetLogLineCount",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LogServiceServer).GetLogCount(ctx, req.(*emptypb.Empty))
+		return srv.(LogServiceServer).GetLogLineCount(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -301,8 +301,8 @@ var LogService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _LogService_GetLastNLogLinesHistory_Handler,
 		},
 		{
-			MethodName: "GetLogCount",
-			Handler:    _LogService_GetLogCount_Handler,
+			MethodName: "GetLogLineCount",
+			Handler:    _LogService_GetLogLineCount_Handler,
 		},
 		{
 			MethodName: "GetLogLineByKey",
