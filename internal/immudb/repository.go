@@ -234,7 +234,7 @@ func (r *repository) GetLastNLogLines(ctx context.Context, n int) ([]*service.Lo
 	logs := []*service.LogLine{}
 	for _, tx := range txs.GetTxs() {
 		for _, entry := range tx.Entries {
-			key := cleanKey(entry.GetKey())
+			key := cleanKey(entry.GetKey()) // @TODO: Dirty Key Values here! WHY?
 			if filterSelfSystemKey(key) {
 				continue
 			}

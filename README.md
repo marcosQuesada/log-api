@@ -92,6 +92,46 @@ Proposed solution uses:
 ## Development flow and make it run
 Info about the followed development path can be found in: ./doc/development.md
 
+### Run Application from golang binary
+Get dependencies
+```
+go mod vendor
+```
+```
+go build -o api
+```
+Before Starting the server ImmuDB needs to be started:
+```
+docker run -it -d --net immudb-net -p 3322:3322 -p 9497:9497 --name immudb codenotary/immudb:latest
+```
+Start server locally:
+```
+./api server
+```
+### Run Application from docker
+Build docker image:
+```
+docker build -t log-api .
+```
+Create a bridged docker network:
+```
+docker network create immudb-net
+```
+Run Immudb from docker in the bridged network:
+```
+docker run -it -d --net immudb-net -p 3322:3322 -p 9497:9497 --name immudb codenotary/immudb:latest
+```
+Run Log-API server as:
+```
+docker run -it -d --net immudb-net -p 9000:9000 -p 9090:9090 -e immudb-host=immudb --name log_api log-api:latest ./app/api server 
+```
+
+### Run test Suite
+```
+  go test --race ./...
+```
+**note: TestItInsertsMultipleLogLinesInBatch is Skipped until solve GetTxs() dirty key composition**
+
 ## Improvements
 - Concurrent execution on Add & AddBatch is not supported
   - Precondition PreconditionKeyNotModifiedAfterTX will fail on concurrent writers
@@ -103,6 +143,8 @@ Info about the followed development path can be found in: ./doc/development.md
   - it can handle jwt credentials initialization and renewal from the client side in a transparent manner.
 
 ## TODO
+- detected dirty Keys from tx.Entries (txs.GetTxs()), needs more investigation
+  - full project consolidation after Zset secondary index addition
 - add secondary indexes test coverage
   - feature added really quick, needs repository testing addition
 - graceful gRPC & http server shutdown

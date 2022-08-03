@@ -19,6 +19,13 @@ Using gRPC gateway plugin compilation:
 protoc -I . --grpc-gateway_out=logtostderr=true:. internal/proto/v1/log.proto
 ```
 
+Something interesting to continue with protoc compilers, moe work can be done in openapi plugin, as a result it will generate openApi spec.
+```
+protoc -I . --openapi_out=version=1.2.3:. internal/proto/v1/log.proto
+```
+It has not been implemented, basically gRPC api's are not full compatible with OpenAPI and so more decoration is required from proto files, things as SecurityContext are not described in proto.
+In any case this path can lead to autogenerate an openApi spec wiich can be really useful to autogenerate even more clients (agree that this can be achieved too from gRPC).
+
 ## Authorization system
 
 A JWT authorization system is implemented as UnaryInterceptor (StreamInterceptor has not been implemented as right now is not required)
@@ -36,40 +43,6 @@ protoc --go_out=. --go_opt=paths=source_relative \
     --grpc-gateway_out=logtostderr=true:. \
     internal/proto/v1/auth.proto
     
-```
-
-### Run Application from golang binary
-Get dependencies
-```
-go mod vendor
-```
-```
-go build -o api
-```
-Before Starting the server ImmuDB needs to be started:
-```
-docker run -it -d --net immudb-net -p 3322:3322 -p 9497:9497 --name immudb codenotary/immudb:latest
-```
-Start server locally:
-```
-./api server
-```
-### Run Application from docker
-Build docker image:
-```
-docker build -t log-api .
-```
-Create a bridged docker network:
-```
-docker network create immudb-net
-```
-Run Immudb from docker in the bridged network:
-```
-docker run -it -d --net immudb-net -p 3322:3322 -p 9497:9497 --name immudb codenotary/immudb:latest
-```
-Run Log-API server as:
-```
-docker run -it -d --net immudb-net -p 9000:9000 -p 9090:9090 -e immudb-host=immudb --name log_api log-api:latest ./app/api server 
 ```
 
 ### gRPC CLI Client
@@ -182,7 +155,6 @@ curl -X POST -H "Authorization: Bearer $JWT" http://localhost:9090/api/v1/log -d
 ```
 curl -X POST -H "Authorization: Bearer $JWT" http://localhost:9090/api/v1/logs -d '{"log_lines":[{"source":fake_source", "bucket":"FakeBucket","value":"FakeData","created_at":"2022-07-30T15:51:34Z"},{"source":"fake_source_a","bucket":"FakeBucket1","value":"FakeData1","created_at":"2022-07-30T15:51:34Z"}]}'
 
-@TODO
 ```
 
 Print history of stored logs (all, last x)
