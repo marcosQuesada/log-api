@@ -230,6 +230,9 @@ func (r *repository) GetLastNLogLines(ctx context.Context, n int) ([]*service.Lo
 		Limit:     uint32(n),
 		Desc:      true,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("unable to scan transactions, error %w", err)
+	}
 
 	logs := []*service.LogLine{}
 	for _, tx := range txs.GetTxs() {
