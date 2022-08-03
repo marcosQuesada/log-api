@@ -17,7 +17,7 @@ var ErrNoMetadataProvided = errors.New("metadata is not provided")
 const (
 	authHeader                = "authorization"
 	bearerCleanOut            = "Bearer "
-	unrestrictedLoginEndpoint = "/v1.AuthService/Login" // @TODO: Further iterations decouple
+	unrestrictedLoginEndpoint = "/v1.AuthService/Login"
 )
 
 type requestValidator interface {
@@ -32,6 +32,7 @@ func NewJWTAuthAdapter(v requestValidator) *JWTAuthAdapter {
 	return &JWTAuthAdapter{validator: v}
 }
 
+// Interceptor defines a unary Interceptor that validates JWT tokens
 func (a *JWTAuthAdapter) Interceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	if info.FullMethod == unrestrictedLoginEndpoint {
 		return handler(ctx, req)

@@ -5,26 +5,24 @@ import (
 	"errors"
 	"testing"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
-func TestItSuccedsOnAuthorizationHeaderFound(t *testing.T) {
+func TestItSucceedsOnAuthorizationHeaderFound(t *testing.T) {
 	v := &fakeRequestValidator{}
 	a := NewJWTAuthAdapter(v)
 
-	token := "fake_jwt_token"
-	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", token)
-
-	if _, err := a.Interceptor(ctx, nil, nil, nopUnaryHandler); err != nil {
-		t.Fatal("expected validation error")
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.MD{"authorization": []string{"fake_jwt_token"}})
+	if _, err := a.Interceptor(ctx, nil, &grpc.UnaryServerInfo{FullMethod: "/v1.FakeService/Foo"}, nopUnaryHandler); err != nil {
+		t.Fatalf("unexpected validation error %v", err)
 	}
 }
 
 func TestItFailsOnAuthorizationHeaderNotFound(t *testing.T) {
 	v := &fakeRequestValidator{}
 	a := NewJWTAuthAdapter(v)
-
-	_, err := a.Interceptor(context.Background(), nil, nil, nopUnaryHandler)
+	_, err := a.Interceptor(context.Background(), nil, &grpc.UnaryServerInfo{FullMethod: "/v1.FakeService/Foo"}, nopUnaryHandler)
 	if err == nil {
 		t.Fatal("expected validation error")
 	}

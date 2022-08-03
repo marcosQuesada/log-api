@@ -47,8 +47,6 @@ func (l *LogService) CreateLogLine(ctx context.Context, r *v1.CreateLogLineReque
 }
 
 func (l *LogService) BatchCreateLogLines(ctx context.Context, lines *v1.BatchCreateLogLinesRequest) (*v1.BatchCreateLogLinesResponse, error) {
-	log.Printf("BatchCreateLogLines Log Lines %v", lines)
-
 	logs := []*LogLine{}
 	ids := []string{}
 	for _, r := range lines.Lines {
@@ -67,8 +65,6 @@ func (l *LogService) BatchCreateLogLines(ctx context.Context, lines *v1.BatchCre
 }
 
 func (l *LogService) GetAllLogLinesHistory(ctx context.Context, e *emptypb.Empty) (*v1.LogLineHistories, error) {
-	log.Printf("GetAllHistory Log Lines %v", e)
-
 	all, err := l.repository.GetByPrefix(ctx, "")
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Cannot process GetByPrefix on repository!")
@@ -78,8 +74,6 @@ func (l *LogService) GetAllLogLinesHistory(ctx context.Context, e *emptypb.Empty
 }
 
 func (l *LogService) GetLastNLogLinesHistory(ctx context.Context, e *v1.LastNLogLinesHistoryRequest) (*v1.LogLineHistories, error) {
-	log.Printf("GetAllHistory Log Lines %v", e)
-
 	all, err := l.repository.GetLastNLogLines(ctx, int(e.GetN()))
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Cannot process GetByPrefix on repository!")
@@ -89,7 +83,6 @@ func (l *LogService) GetLastNLogLinesHistory(ctx context.Context, e *v1.LastNLog
 }
 
 func (l *LogService) GetLogLineCount(ctx context.Context, e *emptypb.Empty) (*v1.Count, error) {
-	log.Println("GetLogCount Log Lines")
 	total, err := l.repository.Count(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Cannot count total LoginLine on repository!")
@@ -100,8 +93,6 @@ func (l *LogService) GetLogLineCount(ctx context.Context, e *emptypb.Empty) (*v1
 }
 
 func (l *LogService) GetLogLineByKey(ctx context.Context, line *v1.LogLineByKeyRequest) (*v1.LogLine, error) {
-	log.Printf("GetLogById Log Line %v", line)
-
 	ll, err := l.repository.GetByKey(ctx, line.Key)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Cannot get by Key on repository!")
@@ -110,8 +101,6 @@ func (l *LogService) GetLogLineByKey(ctx context.Context, line *v1.LogLineByKeyR
 }
 
 func (l *LogService) GetLogLinesByPrefix(ctx context.Context, line *v1.LogLineByPrefixRequest) (*v1.LogLines, error) {
-	log.Printf("GetLogById Log Line %v", line)
-
 	ll, err := l.repository.GetByPrefix(ctx, line.Prefix)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Cannot get by Prefix on repository!")

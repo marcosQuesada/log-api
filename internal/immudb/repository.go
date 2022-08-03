@@ -105,10 +105,7 @@ func (r *repository) AddBatch(ctx context.Context, lines []*service.LogLine) err
 	sizeValue := incBinaryCounter(keySize.Value)
 	kv = append(kv, &schema.KeyValue{Key: logSizeKeyPlaceHolder, Value: sizeValue})
 	pre = append(pre, schema.PreconditionKeyNotModifiedAfterTX(logSizeKeyPlaceHolder, keySize.Tx))
-	_, err = r.client.SetAll(ctx, &schema.SetRequest{
-		KVs:           kv,
-		Preconditions: pre,
-	})
+	_, err = r.client.SetAll(ctx, &schema.SetRequest{KVs: kv, Preconditions: pre})
 
 	// On Batch insertion premises failure, try to store lines one by one
 	if err != nil && immuerrors.FromError(err) != nil && immuerrors.FromError(err).Code() == immuerrors.CodIntegrityConstraintViolation {
