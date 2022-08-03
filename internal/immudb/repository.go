@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/codenotary/immudb/embedded/store"
 	"github.com/codenotary/immudb/pkg/api/schema"
@@ -79,7 +80,9 @@ func (r *repository) Add(ctx context.Context, line *service.LogLine) error {
 	if err != nil {
 		return fmt.Errorf("unable to LogLine key %s, error %w", line.Key(), err)
 	}
-
+	if err := r.addZset(ctx, line.Bucket(), string(line.Key()), line.Time().UnixNano()); err != nil {
+		return fmt.Errorf("unexpected error adding zset on key %s error %v", string(line.Key()), err)
+	}
 	return nil
 }
 
@@ -114,6 +117,12 @@ func (r *repository) AddBatch(ctx context.Context, lines []*service.LogLine) err
 		}
 
 		return nil
+	}
+
+	for _, line := range lines {
+		if err := r.addZset(ctx, line.Bucket(), string(line.Key()), line.Time().UnixNano()); err != nil {
+			return fmt.Errorf("unexpected error adding zset on key %s error %v", string(line.Key()), err)
+		}
 	}
 
 	if err != nil {
@@ -190,6 +199,25 @@ func (r *repository) GetByPrefix(ctx context.Context, prefix string) ([]*service
 	return logs, nil
 }
 
+// GetByBucket gets logLines with bucket
+func (r *repository) GetByBucket(ctx context.Context, bucket string) ([]*service.LogLine, error) {
+	all, err := r.client.ZScan(ctx, &schema.ZScanRequest{Set: []byte(bucket)})
+	if err != nil {
+		return nil, fmt.Errorf("unable to get keys by bucket, error %v", err)
+	}
+
+	logs := []*service.LogLine{}
+	for _, entry := range all.Entries {
+		ln, err := r.client.Get(ctx, entry.GetKey())
+		if err != nil {
+			return nil, fmt.Errorf("unable to get keys by bucket, error %v", err)
+		}
+		logs = append(logs, service.NewLogLine(string(entry.Key), string(ln.Value)))
+	}
+
+	return logs, nil
+}
+
 // GetLastNLogLines gets logLines from last N transactions
 func (r *repository) GetLastNLogLines(ctx context.Context, n int) ([]*service.LogLine, error) {
 	st, err := r.client.CurrentState(ctx)
@@ -220,6 +248,16 @@ func (r *repository) GetLastNLogLines(ctx context.Context, n int) ([]*service.Lo
 	}
 
 	return logs, nil
+}
+
+func (r *repository) addZset(ctx context.Context, bucket string, key string, score int64) error {
+	log.Printf("Add Zset on Key %s bucket %s \n", key, bucket)
+	_, err := r.client.ZAdd(ctx, []byte(bucket), float64(score), []byte(key))
+	if err != nil {
+		return fmt.Errorf("unexpected error adding zset entry, error %v", err)
+	}
+
+	return nil
 }
 
 // filterSelfSystemKey returns true on our logLines counter key

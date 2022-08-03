@@ -22,7 +22,7 @@ It is not required to develop a full blown solution, but we should be able to se
 - Immudb docs: https://docs.immudb.io/master/
 - Immudb go sdk: https://github.com/codenotary/immudb/tree/master/pkg/client
 
-## Dessign process
+## Design process
 
 ### Assumptions
 - key/value mode does not offer Count command yet
@@ -75,6 +75,7 @@ On this implementation:
 Key addition in a sorted set will be idempotent, and so multiple additions wouldn't change zset composition. Thinking in transactional insertions Zsets are not supported with Sadd command, ExecAll it does, but it does not support Preconditions. In any case, as Zset idempotency is ensured, we can handle zset addition on Sadd Tranaction success, so that log line addition will remain using add & sadd.
 
 On Zset scenario a better trade off is achieved (IMHO), using Zset we can separate logs from different applications using different buckets and Source and time can still be handled by key composition trough Scan command
+Zset bucket inclusion has been added at the end of the development cycle, needs more test coverage but it works, we include log Line keys by prefix in the destination sorted set, and so we can get separated log lines by bucket.
 
 ### API implementation
 The whole application has been designed as an API centric application, focused on gRPC proto definition and heavy usage of protoc compiler plugins.
@@ -95,25 +96,22 @@ Info about the followed development path can be found in: ./doc/development.md
 - Concurrent execution on Add & AddBatch is not supported
   - Precondition PreconditionKeyNotModifiedAfterTX will fail on concurrent writers
   - Compare and Swap (Optimistic Concurrency) will handle this fail using retry loop
-- errorGroups with context to handle grpc and http servers
+  - Another way would be to linealize persistence request and handle them one by one (this will limit at concurrency to 1)
+- errorGroups with context to handle grpc and http servers graceful shutdown
+  - it will be needed to add end to end tests
 - grpc client side auth interceptor
+  - it can handle jwt credentials initialization and renewal from the client side in a transparent manner.
 
 ## TODO
-- Add OS environment var bindings
-  - immudb-host ISSUE
-- add secondary indexes
-- Clean DOCS
-- Docker compose instructions
-
+- add secondary indexes test coverage
+  - feature added really quick, needs repository testing addition
 - graceful gRPC & http server shutdown
   - use errorGroup with context on both transport server
   - handle application shutdown in a controlled manner 
   - use SigTerm and SigKill signals
 
-- e2e test
-  
-- GetCount seems to fail on empty data...first start
-``` // @TODO: FIX IT
-curl -X GET -H "Authorization: Bearer $JWT" http://localhost:9090/api/v1/logs/count   
-{}
-```
+- Increase test coverage
+  - add test on relevant methods on the gRPC service layer (log) 
+  - e2e test
+
+- clean pending @TODOs

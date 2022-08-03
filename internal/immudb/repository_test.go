@@ -160,7 +160,7 @@ func TestItGetsByPrefixPreviousInsertedLogLines(t *testing.T) {
 		t.Fatalf("expectation does not match, expected %d got %d", expected, got)
 	}
 
-	// @TODO: Fulfill order reflect.Equals
+	// @TODO: Validate result composition
 }
 
 func TestItGetsLastNInsertedLogLines(t *testing.T) {
@@ -187,7 +187,7 @@ func TestItGetsLastNInsertedLogLines(t *testing.T) {
 		t.Fatalf("expectation does not match, expected %d got %d", expected, got)
 	}
 
-	// @TODO: Fulfill order reflect.Equals
+	// @TODO: Validate result composition
 }
 
 func TestItInsertsMultipleLogLinesInBatch(t *testing.T) {
@@ -211,6 +211,32 @@ func TestItInsertsMultipleLogLinesInBatch(t *testing.T) {
 
 	if expected, got := len(lines), len(all); expected != got {
 		t.Fatalf("values do not match, expected %d got %d", expected, got)
+	}
+
+}
+
+func TestItInsertsOnZsetOnBatchAdditionDevelopmentTest(t *testing.T) { // @TODO: consolidate on next iteration
+	defer reset()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	r := NewRepository(cl)
+	bucket := "fake_bucket_foo"
+	lines := []*service.LogLine{
+		service.NewLogLineWithBucket(bucket, "bar_00", "fake value", time.Now()),
+		service.NewLogLineWithBucket(bucket, "bar_01", "fake value 0", time.Now().Add(time.Nanosecond)),
+	}
+	if err := r.AddBatch(ctx, lines); err != nil {
+		log.Fatalf("unexpected error adding batch, error %v", err)
+	}
+
+	res, err := r.GetByBucket(ctx, bucket)
+	if err != nil {
+		t.Fatalf("unexpected error getting entries by bucket, error %v", err)
+	}
+
+	if expected, got := 2, len(res); expected != got {
+		t.Fatalf("expectation does not match, expected %d got %d", expected, got)
 	}
 }
 

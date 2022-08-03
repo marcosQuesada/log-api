@@ -23,7 +23,6 @@ var loginCmd = &cobra.Command{
 	Short: "login obtains JWT token",
 	Long:  "login obtains JWT token",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("login called")
 		addr := fmt.Sprintf("localhost:%d", grpcPort)
 		conn, err := grpc.Dial(addr,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),

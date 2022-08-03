@@ -20,6 +20,8 @@ type Repository interface {
 	GetByKey(ctx context.Context, key string) (*LogLine, error)
 	GetByPrefix(ctx context.Context, prefix string) ([]*LogLine, error)
 	GetLastNLogLines(ctx context.Context, n int) ([]*LogLine, error)
+
+	GetByBucket(ctx context.Context, bucket string) ([]*LogLine, error)
 }
 
 type LogService struct {
@@ -51,6 +53,7 @@ func (l *LogService) BatchCreateLogLines(ctx context.Context, lines *v1.BatchCre
 	ids := []string{}
 	for _, r := range lines.Lines {
 		line := convertLogLineRequest(r)
+
 		logs = append(logs, line)
 		ids = append(ids, line.key)
 	}
@@ -113,6 +116,19 @@ func (l *LogService) GetLogLinesByPrefix(ctx context.Context, line *v1.LogLineBy
 	return &v1.LogLines{LogLines: lines}, nil
 }
 
+func (l *LogService) GetLogLinesByBucket(ctx context.Context, req *v1.LogLineByBucketRequest) (*v1.LogLines, error) {
+	ll, err := l.repository.GetByBucket(ctx, req.GetBucket())
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Cannot get by Bucket on repository!")
+	}
+
+	lines := []*v1.LogLine{}
+	for _, logLine := range ll {
+		lines = append(lines, convertLogLinesToProtocol(logLine))
+	}
+	return &v1.LogLines{LogLines: lines}, nil
+}
+
 func (l *LogService) histories(ctx context.Context, all []*LogLine) (*v1.LogLineHistories, error) {
 	lh := []*v1.LogLineHistory{}
 	for _, line := range all {
@@ -142,9 +158,13 @@ func (l *LogService) histories(ctx context.Context, all []*LogLine) (*v1.LogLine
 
 func convertLogLineRequest(l *v1.CreateLogLineRequest) *LogLine {
 	return &LogLine{
-		key:   logLineKey(l.GetBucket(), l.GetSource(), l.CreatedAt.AsTime()),
+		key:   logLineKey(l.GetSource(), l.CreatedAt.AsTime()),
 		value: l.Value,
+
+		bucket: l.GetBucket(), // @TODO: Refactor on next iteration
+		time:   l.CreatedAt.AsTime(),
 	}
+
 }
 
 func convertLogLinesToProtocol(l *LogLine) *v1.LogLine {
@@ -154,7 +174,6 @@ func convertLogLinesToProtocol(l *LogLine) *v1.LogLine {
 	}
 }
 
-func logLineKey(bucket, source string, t time.Time) string {
-	//return fmt.Sprintf("%s-%s", source, t.UnixNano()) // @TODO: Include bucket!
+func logLineKey(source string, t time.Time) string {
 	return fmt.Sprintf("%s_%d", source, t.UnixNano())
 }

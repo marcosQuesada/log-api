@@ -23,8 +23,6 @@ var getByPrefixCmd = &cobra.Command{
 	Short: "get prefixed log lines",
 	Long:  "get prefixed log lines",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("getByPrefix called  with prefix ", prefix)
-
 		addr := fmt.Sprintf("localhost:%d", grpcPort)
 		conn, err := grpc.Dial(addr,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),

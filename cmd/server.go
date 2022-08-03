@@ -68,7 +68,7 @@ var serverCmd = &cobra.Command{
 		v1.RegisterLogServiceServer(s, svc)
 		v1.RegisterAuthServiceServer(s, service.NewAuth(jwtProc, service.NewAuthFakeRepository()))
 
-		// @TODO: Signal chan, add ordered shutdown
+		// @TODO: Signal chan, add graceful gRPC & http shutdown
 		go func() {
 			if err := s.Serve(lis); err != nil {
 				log.Fatalf("error serving %v", err)

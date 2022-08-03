@@ -20,8 +20,6 @@ var historyAllCmd = &cobra.Command{
 	Short: "get all log lines history",
 	Long:  `get all log lines history`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("historyAll called")
-
 		addr := fmt.Sprintf("localhost:%d", grpcPort)
 		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {

@@ -23,7 +23,6 @@ var getByKeyCmd = &cobra.Command{
 	Short: "Get By log Line Key",
 	Long:  "Get By log Line Key",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("getByKey called")
 		addr := fmt.Sprintf("localhost:%d", grpcPort)
 		conn, err := grpc.Dial(addr,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),

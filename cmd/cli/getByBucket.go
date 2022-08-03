@@ -11,14 +11,17 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-// countCmd represents the count command
-var countCmd = &cobra.Command{
-	Use:   "count",
-	Short: "Count all created log lines",
-	Long:  "Count all created log lines",
+var (
+	bucket string
+)
+
+// getByBucketCmd represents the getByPrefix command
+var getByBucketCmd = &cobra.Command{
+	Use:   "get-by-bucket",
+	Short: "get bucket log lines",
+	Long:  "get bucket log lines",
 	Run: func(cmd *cobra.Command, args []string) {
 		addr := fmt.Sprintf("localhost:%d", grpcPort)
 		conn, err := grpc.Dial(addr,
@@ -34,14 +37,17 @@ var countCmd = &cobra.Command{
 		defer cancel()
 
 		c := v1.NewLogServiceClient(conn)
-		u, err := c.GetLogLineCount(ctx, &emptypb.Empty{})
+		u, err := c.GetLogLinesByBucket(ctx, &v1.LogLineByBucketRequest{Bucket: bucket})
 		if err != nil {
-			log.Fatalf("could not get by ID: %v", err)
+			log.Fatalf("could not get by bucket %s: %v", prefix, err)
 		}
-		log.Printf("Count: %v", u)
+		for _, line := range u.LogLines {
+			log.Printf("LogLine with key %s: %v\n", line.GetKey(), line)
+		}
 	},
 }
 
 func init() {
-	ClientCmd.AddCommand(countCmd)
+	ClientCmd.AddCommand(getByBucketCmd)
+	getByBucketCmd.PersistentFlags().StringVar(&bucket, "bucket", "", "key bucket")
 }

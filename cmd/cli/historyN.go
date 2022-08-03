@@ -23,8 +23,6 @@ var historyNCmd = &cobra.Command{
 	Short: "get last N transactions log lines history",
 	Long:  "get last N transactions log lines history",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("history N last transactions called")
-
 		addr := fmt.Sprintf("localhost:%d", grpcPort)
 		conn, err := grpc.Dial(addr,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),

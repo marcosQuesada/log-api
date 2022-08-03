@@ -145,6 +145,17 @@ getByPrefix called  with prefix  foo
 2022/08/02 15:49:10 LogLine with key foo_bar_key_1_1659447602626380233: key:"foo_bar_key_1_1659447602626380233" value:"fake log content"
 ```
 
+#### Log Lines By Bucket (from Zset)
+```
+go run main.go client get-by-bucket --token=$JWT --bucket=fake_bucket
+
+
+getByBucketCmd called  with bucket  fake_bucket
+2022/08/03 11:36:35 LogLine with key fake_source_a_1659469108710408961: key:"fake_source_a_1659469108710408961"  value:"fake data value xxx"
+2022/08/03 11:36:35 LogLine with key fake_source_b_1659469108710409242: key:"fake_source_b_1659469108710409242"  value:"fake data value xaxaxax"
+
+```
+
 ## HTTP bindings
 
 ### AUTH credentials Inclusion
@@ -197,4 +208,10 @@ Use JWT from http
 curl -X GET -H "Authorization: Bearer $JWT" http://localhost:9090/api/v1/logs/count                                                                              
 
 {"total":10}
+```
+
+Get Log Lines By Bucket
+```
+curl -X GET -H "Authorization: Bearer $JWT" http://localhost:9090/api/v1/log/bucket/fake_bucket       
+{"log_lines":[{"key":"fake_source_a_1659469108710408961","value":"fake data value xxx"},{"key":"fake_source_b_1659469108710409242","value":"fake data value xaxaxax"}]}
 ```

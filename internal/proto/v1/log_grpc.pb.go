@@ -26,6 +26,7 @@ type LogServiceClient interface {
 	GetLogLineCount(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Count, error)
 	GetLogLineByKey(ctx context.Context, in *LogLineByKeyRequest, opts ...grpc.CallOption) (*LogLine, error)
 	GetLogLinesByPrefix(ctx context.Context, in *LogLineByPrefixRequest, opts ...grpc.CallOption) (*LogLines, error)
+	GetLogLinesByBucket(ctx context.Context, in *LogLineByBucketRequest, opts ...grpc.CallOption) (*LogLines, error)
 }
 
 type logServiceClient struct {
@@ -99,6 +100,15 @@ func (c *logServiceClient) GetLogLinesByPrefix(ctx context.Context, in *LogLineB
 	return out, nil
 }
 
+func (c *logServiceClient) GetLogLinesByBucket(ctx context.Context, in *LogLineByBucketRequest, opts ...grpc.CallOption) (*LogLines, error) {
+	out := new(LogLines)
+	err := c.cc.Invoke(ctx, "/v1.LogService/GetLogLinesByBucket", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LogServiceServer is the server API for LogService service.
 // All implementations must embed UnimplementedLogServiceServer
 // for forward compatibility
@@ -110,6 +120,7 @@ type LogServiceServer interface {
 	GetLogLineCount(context.Context, *emptypb.Empty) (*Count, error)
 	GetLogLineByKey(context.Context, *LogLineByKeyRequest) (*LogLine, error)
 	GetLogLinesByPrefix(context.Context, *LogLineByPrefixRequest) (*LogLines, error)
+	GetLogLinesByBucket(context.Context, *LogLineByBucketRequest) (*LogLines, error)
 	mustEmbedUnimplementedLogServiceServer()
 }
 
@@ -137,6 +148,9 @@ func (UnimplementedLogServiceServer) GetLogLineByKey(context.Context, *LogLineBy
 }
 func (UnimplementedLogServiceServer) GetLogLinesByPrefix(context.Context, *LogLineByPrefixRequest) (*LogLines, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLogLinesByPrefix not implemented")
+}
+func (UnimplementedLogServiceServer) GetLogLinesByBucket(context.Context, *LogLineByBucketRequest) (*LogLines, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetLogLinesByBucket not implemented")
 }
 func (UnimplementedLogServiceServer) mustEmbedUnimplementedLogServiceServer() {}
 
@@ -277,6 +291,24 @@ func _LogService_GetLogLinesByPrefix_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LogService_GetLogLinesByBucket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LogLineByBucketRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LogServiceServer).GetLogLinesByBucket(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/v1.LogService/GetLogLinesByBucket",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LogServiceServer).GetLogLinesByBucket(ctx, req.(*LogLineByBucketRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LogService_ServiceDesc is the grpc.ServiceDesc for LogService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -311,6 +343,10 @@ var LogService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetLogLinesByPrefix",
 			Handler:    _LogService_GetLogLinesByPrefix_Handler,
+		},
+		{
+			MethodName: "GetLogLinesByBucket",
+			Handler:    _LogService_GetLogLinesByBucket_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

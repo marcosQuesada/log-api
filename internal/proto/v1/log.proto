@@ -49,6 +49,12 @@ service LogService {
       get: "/api/v1/log/prefix/{prefix}"
     };
   }
+
+  rpc GetLogLinesByBucket (LogLineByBucketRequest) returns (LogLines) {
+    option (google.api.http) = {
+      get: "/api/v1/log/bucket/{bucket}"
+    };
+  }
 }
 
 message CreateLogLineRequest {
@@ -99,6 +105,10 @@ message LogLineByKeyRequest {
 
 message LogLineByPrefixRequest {
   string prefix = 1;
+}
+
+message LogLineByBucketRequest {
+  string bucket = 1;
 }
 
 message LogLine {
